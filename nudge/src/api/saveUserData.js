@@ -1,5 +1,10 @@
 import axios from "axios";
+import { API_BASE_URL } from "./apiConfig";
 
+/**
+ * Persists enriched task fields + user_id. Call after POST /api/tasks/enrich;
+ * body matches server POST /tasks/ expectations (enriched task + user_id).
+ */
 const saveUserData = async (userId, newTask) => {
   if (!userId) {
     return;
@@ -12,7 +17,7 @@ const saveUserData = async (userId, newTask) => {
   };
 
   return await axios.post(
-    `https://urgent-maria-nudge-9f4b7e98.koyeb.app/tasks/`,
+    `${API_BASE_URL}/tasks/`,
     { user_id: userId, ...newTask },
     config,
   );

@@ -165,12 +165,11 @@ function App() {
   );
 
   const handleGetSuggestion = useCallback(async () => {
-    const response = await fetchSuggestion(taskList);
-    if (!response) {
+    const suggestionData = await fetchSuggestion(taskList);
+    if (!suggestionData) {
       return;
     }
-    const responseFromGPT = response.data?.choices[0]?.message?.content;
-    setSuggestion(JSON.parse(responseFromGPT));
+    setSuggestion(suggestionData);
   }, [setSuggestion, taskList]);
 
   const handleChangeInput = useCallback(

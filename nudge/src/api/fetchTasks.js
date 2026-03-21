@@ -1,4 +1,5 @@
 import axios from "axios";
+import { API_BASE_URL } from "./apiConfig";
 
 const fetchTasks = async (userName) => {
   if (!userName) {
@@ -12,7 +13,7 @@ const fetchTasks = async (userName) => {
   };
   if (userName) {
     return await axios.get(
-      `https://urgent-maria-nudge-9f4b7e98.koyeb.app/user_by_username/${userName}`,
+      `${API_BASE_URL}/user_by_username/${userName}`,
       config,
     );
   }
@@ -30,7 +31,7 @@ export const fetchTasksById = async (userId) => {
   };
   if (userId) {
     return await axios.get(
-      `https://urgent-maria-nudge-9f4b7e98.koyeb.app/user_by_id/${userId}`,
+      `${API_BASE_URL}/user_by_id/${userId}`,
       config,
     );
   }

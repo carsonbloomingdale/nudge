@@ -2,6 +2,20 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Backend API (this app)
+
+All requests use a single origin from `REACT_APP_API_BASE_URL` (see `src/api/apiConfig.js`). No trailing slash; paths are joined as `` `${API_BASE_URL}/...` ``.
+
+| Method | Path | Role |
+|--------|------|------|
+| `POST` | `/api/tasks/enrich` | Normalize “what I did today” → task fields (OpenAI on server). |
+| `POST` | `/api/suggestions` | Next-task suggestion + rationale. |
+| `POST` | `/tasks/` | Save enriched task + `user_id` (after enrich). |
+| `GET` | `/user_by_username/:name` | Load user + task list. |
+| `GET` | `/user_by_id/:id` | Load user + task list. |
+
+Client sends `Content-Type: application/json` only — no OpenAI key in the browser.
+
 ## Available Scripts
 
 In the project directory, you can run:
