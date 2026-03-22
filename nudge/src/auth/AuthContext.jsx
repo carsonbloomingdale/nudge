@@ -18,6 +18,7 @@ import {
   readDisplayProfile,
   writeDisplayProfile,
 } from "./sessionKeys";
+import { mergeTokensFromResponse } from "./tokenStorage";
 
 /**
  * @typedef {{ userId: string, username: string | null, email: string | null }} AuthUser
@@ -78,6 +79,9 @@ export function AuthProvider({ children }) {
    * @param {import("axios").AxiosResponse} [axiosResponse]
    */
   const establishSession = useCallback(async (axiosResponse) => {
+    if (axiosResponse?.data) {
+      mergeTokensFromResponse(axiosResponse.data);
+    }
     let nextUser = axiosResponse
       ? normalizeUserPayload(axiosResponse.data)
       : null;
