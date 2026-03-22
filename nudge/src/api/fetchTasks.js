@@ -6,6 +6,8 @@ function encodePathSegment(value) {
 }
 
 /**
+ * Legacy public lookups (no cookie). Prefer cookie auth + GET /tasks in the app.
+ *
  * @returns {Promise<{ ok: true, response: import("axios").AxiosResponse } | { ok: false, notFound: true } | { ok: false, notFound: false, error: unknown }>}
  */
 export async function loadUserByUsername(userName) {

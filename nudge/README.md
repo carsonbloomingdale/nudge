@@ -1,104 +1,104 @@
-# Getting Started with Create React App
+# Nudge (frontend)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Create React App UI for Nudge. The API uses **HTTP-only cookies** (`access_token`, `refresh_token`) plus optional **`Authorization: Bearer`** on the server.
 
-## Backend API (this app)
+**Source of truth for auth behavior:** backend **`docs/AUTH.md`** (CORS + credentials, cookie domain, cold refresh, 401 → refresh → retry).
 
-All requests use a single origin from `REACT_APP_API_BASE_URL` (see `src/api/apiConfig.js`). No trailing slash; paths are joined as `` `${API_BASE_URL}/...` ``.
+## Auth & routing
+
+- **`/app`** — Tasks + suggestions (protected). All API calls use **`withCredentials: true`** (`src/api/httpClient.js`).
+- **`/auth/login`** — `POST /auth/login` with `{ password, username | email }`.
+- **`/auth/signup`** — `POST /auth/register` with `{ username, email, password }` (min **8** chars; aligned with BE `RegisterRequest`).
+- **`/auth/magic`** — Placeholder until magic-link exists on the API.
+
+**Session restore:** `POST /auth/refresh` (cold load, no interceptor loop) → **`GET /auth/me`** for profile. If `/auth/me` is unavailable (**503**) or missing (**404**), the UI falls back to **`nudge_display_profile`** in `localStorage` (display only, not authorization).
+
+**Logout:** `POST /auth/logout` (BE **`clear_auth_cookies`** uses same path/domain/secure/httponly/samesite as Set-Cookie) → FE clears local display cache.
+
+**401 handling:** Shared axios client retries once after **`POST /auth/refresh`** for normal API calls (not login/register/refresh).
+
+### CORS + cookies (ops)
+
+- Set **`CORS_ORIGINS`** to **real SPA origin(s)** — **not** `*` — when the browser must send cookies.
+- Response must include **`Access-Control-Allow-Credentials: true`** and a **specific** `Access-Control-Allow-Origin` (the exact SPA origin, not `*`).
+- **`http://localhost:3000` and `http://127.0.0.1:3000` are different origins** — include whichever you open in the browser (often both while testing).
+
+#### “Still getting a CORS error” (local dev)
+
+**Option A — bypass CORS in dev (recommended for CRA):**
+
+1. Keep **`"proxy": "http://127.0.0.1:8000"`** in `package.json` (change port if your API differs).
+2. In **`.env.local`** set:
+   ```bash
+   REACT_APP_USE_SAME_ORIGIN_API=true
+   ```
+   (Leave `REACT_APP_API_BASE_URL` unset or ignore it while this is on.)
+3. Restart **`npm start`**. The browser only talks to `localhost:3000`; the dev server proxies `/auth/*`, `/tasks/`, etc. to the API.
+
+**Option B — fix CORS on the API** (needed for production / direct API URL anyway):
+
+- Add your SPA origin to **`CORS_ORIGINS`** (comma-separated).
+- Allow **credentials** and the methods/headers you use (`POST`, `GET`, `Content-Type`, etc.).
+
+BE may set **`AUTH_COOKIE_DOMAIN`** (e.g. `.example.com`) so API + SPA subdomains share cookies in deployed environments.
+
+### Backend API (contract summary)
+
+`REACT_APP_API_BASE_URL` — no trailing slash (`src/api/apiConfig.js`). Paths are joined as `` `${API_BASE_URL}/...` `` when not using the dev proxy.
 
 | Method | Path | Role |
 |--------|------|------|
-| `POST` | `/api/tasks/enrich` | Normalize “what I did today” → task fields (OpenAI on server). |
-| `POST` | `/api/suggestions` | Next-task suggestion + rationale. |
-| `POST` | `/tasks/` | Save enriched task + `user_id` (after enrich). |
-| `POST` | `/users/` | Create user; body `{ "username": "..." }`. Response same shape as GET user (e.g. `user_id`, `person_tasks`). **409** if username taken. |
-| `GET` | `/user_by_username/:name` | Load user + task list. **404** if user does not exist. |
-| `GET` | `/user_by_id/:id` | Load user + task list. **404** if id invalid / user removed. |
+| `POST` | `/auth/register` | `{ username, email, password }` (password min 8). |
+| `POST` | `/auth/login` | Sets access + refresh cookies. |
+| `POST` | `/auth/logout` | Clears auth cookies (matching attributes). |
+| `POST` | `/auth/refresh` | Rotates tokens; used on cold load + axios 401 retry. |
+| `GET` | `/auth/me` | Session user: `{ id, user_id, sub, username, user_name, email, … }`. Valid JWT required (**401** / **503** per BE). |
+| `GET` | `/tasks`, `/tasks/` | Same handler; **JSON array** of tasks (`label`, `task_id`, `user_id`, …). |
+| `POST` | `/tasks/` | **`TaskCreateBody`** — **no `user_id`**; server sets user from JWT. |
+| `POST` | `/api/tasks/enrich` | Enrich task (OpenAI on server); response includes **`task`**. |
+| `POST` | `/api/suggestions` | Suggestion + rationale; **`suggestion.reccomendedTask`** + **`context`**. |
+| `POST` | `/users/` | Legacy create user; **409** if taken. |
+| `GET` | `/user_by_username/:name` | Legacy; **404** if missing. |
+| `GET` | `/user_by_id/:id` | Legacy; **404** if invalid. |
 
-Client sends `Content-Type: application/json` only — no OpenAI key in the browser.
+Client sends `Content-Type: application/json` only — **no OpenAI key** in the browser.
 
 ## Environment variables
 
-1. Copy the example file and edit locally (file is gitignored):
+1. Copy the example file and edit locally (secrets stay gitignored):
 
    ```bash
    cd nudge
    cp .env.example .env.local
    ```
 
-2. **Local full stack:** run your API on `PORT` (e.g. `8000`) with `HOST=0.0.0.0`, and set:
+2. Set **`REACT_APP_API_BASE_URL`** to your API (e.g. `http://127.0.0.1:8000`) when **not** using the dev proxy.
 
-   `REACT_APP_API_BASE_URL=http://127.0.0.1:8000`
+3. **Local full stack:** API on port **8000** (typical); CRA dev server uses **`HOST` / `PORT`** in `.env.local` for the **frontend** (e.g. `0.0.0.0:3000`).
 
-   The React dev server (`npm start`) uses `HOST` / `PORT` in `.env.local` for where the **frontend** listens (default in example: `0.0.0.0:3000`). The **backend** port is separate.
+4. **Production:** set **`REACT_APP_API_BASE_URL`** on the build host (e.g. Koyeb). `npm run build` does not bundle `.env.local`.
 
-3. **Production:** set `REACT_APP_API_BASE_URL` in your build environment (e.g. Koyeb). `npm run build` does not use `.env.local` — only `.env.production` / `.env.production.local` and host-provided env.
-
-Backend-only template (separate repo): see `docs/backend.env.example` in the repo root.
+Backend-only template (separate repo): **`docs/backend.env.example`** at repo root (if present).
 
 ## Available Scripts
 
-In the project directory, you can run:
-
 ### `npm start`
 
-Runs the app in the development mode.\
-With `.env.local` from `.env.example`, open [http://localhost:3000](http://localhost:3000) (or your chosen `PORT`) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Runs the app in development. Open [http://localhost:3000](http://localhost:3000) (or your chosen **`PORT`** from `.env.local`). The page reloads on file changes.
 
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Runs tests.
 
 ### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Production build to `build/`.
 
 ### `npm run eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+One-way eject from CRA defaults.
 
 ## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started)
+- [React documentation](https://reactjs.org/)
