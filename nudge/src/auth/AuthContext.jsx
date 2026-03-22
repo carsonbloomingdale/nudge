@@ -21,7 +21,10 @@ import {
   writeDisplayProfile,
 } from "./sessionKeys";
 import { SessionVerificationError } from "./sessionErrors";
-import { mergeTokensFromResponse } from "./tokenStorage";
+import {
+  mergeAuthTokensFromAxiosResponse,
+  syncCookieTokensToSessionStorage,
+} from "./tokenStorage";
 
 /** @typedef {import("../api/authApi").AuthUser} AuthUser */
 
@@ -57,6 +60,7 @@ export function AuthProvider({ children }) {
     (async () => {
       setStatus("restoring");
       try {
+        syncCookieTokensToSessionStorage();
         await refreshSession();
         if (cancelled) {
           return;
@@ -102,8 +106,8 @@ export function AuthProvider({ children }) {
    * @param {import("axios").AxiosResponse} [axiosResponse]
    */
   const establishSession = useCallback(async (axiosResponse) => {
-    if (axiosResponse?.data) {
-      mergeTokensFromResponse(axiosResponse.data);
+    if (axiosResponse) {
+      mergeAuthTokensFromAxiosResponse(axiosResponse);
     }
     const fromResponse = axiosResponse
       ? normalizeUserPayload(axiosResponse.data)

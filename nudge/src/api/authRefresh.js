@@ -1,8 +1,10 @@
 import axios from "axios";
 import { API_BASE_URL } from "./apiConfig";
 import {
-  mergeTokensFromResponse,
+  mergeAuthTokensFromAxiosResponse,
+  readAccessToken,
   readRefreshToken,
+  syncCookieTokensToSessionStorage,
 } from "../auth/tokenStorage";
 
 const refreshClientConfig = {
@@ -14,13 +16,28 @@ const refreshClientConfig = {
  * Try cookie-based refresh first; if that fails, POST { refresh_token } when stored (mobile / cross-site).
  */
 export async function refreshTokensRequest() {
+  syncCookieTokensToSessionStorage();
   try {
     const r = await axios.post(
       `${API_BASE_URL}/auth/refresh`,
       {},
       refreshClientConfig,
     );
-    mergeTokensFromResponse(r.data);
+    mergeAuthTokensFromAxiosResponse(r);
+    const rt = readRefreshToken();
+    if (!readAccessToken() && rt) {
+      try {
+        const r2 = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refresh_token: rt },
+          refreshClientConfig,
+        );
+        mergeAuthTokensFromAxiosResponse(r2);
+        return r2;
+      } catch {
+        /* keep cookie-based response if body refresh fails */
+      }
+    }
     return r;
   } catch (cookieErr) {
     const rt = readRefreshToken();
@@ -32,7 +49,7 @@ export async function refreshTokensRequest() {
       { refresh_token: rt },
       refreshClientConfig,
     );
-    mergeTokensFromResponse(r2.data);
+    mergeAuthTokensFromAxiosResponse(r2);
     return r2;
   }
 }
