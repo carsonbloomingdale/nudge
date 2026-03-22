@@ -63,6 +63,20 @@ BE may set **`AUTH_COOKIE_DOMAIN`** (e.g. `.example.com`) so API + SPA subdomain
 
 Client sends `Content-Type: application/json` only — **no OpenAI key** in the browser.
 
+## Deploy (Koyeb / production)
+
+**Do not run `npm start` in production.** That starts webpack-dev-server and causes **Invalid Host header** for custom domains (`nudgeweb.app`).
+
+Use a **production build** + static file server:
+
+| | |
+|--|--|
+| **Root directory** | `nudge` (if repo root is the monorepo) |
+| **Build command** | `npm ci && npm run build` |
+| **Run command** | `npm run start:prod` |
+
+Koyeb sets **`PORT`**; `start:prod` serves the **`build/`** folder on `0.0.0.0`. Set **`REACT_APP_*`** vars in the service **environment** before/during build.
+
 ## Environment variables
 
 1. Copy the example file and edit locally (secrets stay gitignored):
