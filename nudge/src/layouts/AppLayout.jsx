@@ -4,16 +4,9 @@ import { useAuth } from "../auth/AuthContext";
 import BottomNav from "../components/mobile/BottomNav";
 import MobileComposer from "../components/mobile/MobileComposer";
 import { AppShellProvider, useAppShell } from "../context/AppShellContext";
+import { displayUserAvatarLabel } from "../utils/userDisplay";
 
 const LG = "1024px";
-
-function userInitial(user) {
-  const raw = (user?.username || user?.email || "").trim();
-  if (!raw) {
-    return "?";
-  }
-  return raw[0].toUpperCase();
-}
 
 function GearIcon() {
   return (
@@ -145,14 +138,15 @@ const AvatarLink = styled(Link)`
   color: hsl(var(--primary));
   font-family: var(--font-sans), sans-serif;
   font-weight: 600;
-  font-size: 0.8125rem;
+  font-size: ${(p) => (p.$compact ? "0.6875rem" : "0.8125rem")};
+  letter-spacing: ${(p) => (p.$compact ? "-0.03em" : "normal")};
   text-decoration: none;
   transition: transform 200ms ease, box-shadow 200ms ease;
 
   @media (min-width: ${LG}) {
     width: 2.25rem;
     height: 2.25rem;
-    font-size: 0.875rem;
+    font-size: ${(p) => (p.$compact ? "0.75rem" : "0.875rem")};
   }
 
   &:hover {
@@ -237,7 +231,8 @@ const FooterNote = styled.p`
 function AppLayoutInner() {
   const { user } = useAuth();
   const { streakCount } = useAppShell();
-  const initial = userInitial(user);
+  const avatarLabel = displayUserAvatarLabel(user);
+  const avatarCompact = avatarLabel.length > 1;
   const streakLabel =
     streakCount === 1 ? "day" : "days";
 
@@ -258,8 +253,9 @@ function AppLayoutInner() {
             to="/app/account"
             aria-label="Profile and account"
             title="Profile"
+            $compact={avatarCompact}
           >
-            {initial}
+            {avatarLabel}
           </AvatarLink>
           <IconButton
             to="/app/settings"

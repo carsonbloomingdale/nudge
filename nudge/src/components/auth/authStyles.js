@@ -249,3 +249,45 @@ export const AuthLinks = styled.nav`
     }
   }
 `;
+
+export const StyledOptionalHeading = styled.h3`
+  margin: 0.5rem 0 0;
+  width: 100%;
+  max-width: 320px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+`;
+
+export const StyledCheckboxRow = styled.label`
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  max-width: 320px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  text-align: left;
+
+  input {
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+  }
+`;
+
+export const StyledFieldHint = styled.span`
+  display: block;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.3rem;
+  line-height: 1.45;
+  max-width: 320px;
+  text-align: left;
+`;

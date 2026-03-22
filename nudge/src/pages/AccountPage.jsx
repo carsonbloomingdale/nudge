@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { useAuth } from "../auth/AuthContext";
 import { fetchAuthenticatedTasks } from "../api/taskApi";
 import { useAppShell } from "../context/AppShellContext";
+import { displayUserAvatarLabel } from "../utils/userDisplay";
 
 const LG = "1024px";
 
@@ -132,10 +133,6 @@ const SettingsLink = styled(Link)`
   font-weight: 600;
   transition: box-shadow 300ms ease, transform 200ms ease;
 
-  @media (min-width: ${LG}) {
-    display: none;
-  }
-
   &:hover {
     box-shadow: 0 4px 14px hsl(var(--foreground) / 0.08);
   }
@@ -204,20 +201,12 @@ function displayName(user) {
   return user.username || user.email || null;
 }
 
-function userInitial(user) {
-  const raw = (user?.username || user?.email || "").trim();
-  if (!raw) {
-    return "?";
-  }
-  return raw[0].toUpperCase();
-}
-
 export default function AccountPage() {
   const { user, logout } = useAuth();
   const { streakCount } = useAppShell();
   const navigate = useNavigate();
   const name = displayName(user);
-  const initial = userInitial(user);
+  const avatarLabel = displayUserAvatarLabel(user);
   const [momentCount, setMomentCount] = useState(null);
 
   useEffect(() => {
@@ -249,7 +238,7 @@ export default function AccountPage() {
   return (
     <Card className="animate-fade-up stagger-0">
       <ProfileHeader>
-        <AvatarBig aria-hidden>{initial}</AvatarBig>
+        <AvatarBig aria-hidden>{avatarLabel}</AvatarBig>
         <ProfileText>
           <Title>Profile</Title>
           <Subtitle>{name || "Signed in"}</Subtitle>
@@ -287,6 +276,26 @@ export default function AccountPage() {
       <Row>
         <Label>Email</Label>
         <Value>{user?.email || "—"}</Value>
+      </Row>
+      <Row>
+        <Label>First name</Label>
+        <Value>{user?.firstName || "—"}</Value>
+      </Row>
+      <Row>
+        <Label>Last name</Label>
+        <Value>{user?.lastName || "—"}</Value>
+      </Row>
+      <Row>
+        <Label>Phone</Label>
+        <Value>{user?.phone || "—"}</Value>
+      </Row>
+      <Row>
+        <Label>Timezone</Label>
+        <Value>{user?.timezone || "—"}</Value>
+      </Row>
+      <Row>
+        <Label>SMS reminders</Label>
+        <Value>{user?.smsOptIn ? "On" : "Off"}</Value>
       </Row>
       <LogoutBtn type="button" onClick={handleLogout}>
         Log out

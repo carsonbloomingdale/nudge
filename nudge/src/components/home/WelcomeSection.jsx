@@ -1,4 +1,6 @@
 import styled from "styled-components";
+import { useAuth } from "../../auth/AuthContext";
+import { displayWelcomeName } from "../../utils/userDisplay";
 
 const LG = "1024px";
 
@@ -107,11 +109,17 @@ export default function WelcomeSection({
   onRefresh,
   refreshing = false,
 }) {
+  const { user } = useAuth();
+  const welcomeName = displayWelcomeName(user);
+  const titleText = welcomeName
+    ? `Welcome back, ${welcomeName}`
+    : "Welcome back";
+
   return (
     <Section className="animate-fade-up stagger-0" aria-labelledby="home-welcome-title">
       <TopRow>
         <TextBlock>
-          <Title id="home-welcome-title">Welcome back</Title>
+          <Title id="home-welcome-title">{titleText}</Title>
           <Sub>
             A quiet corner to notice what you did — one line at a time, no
             pressure to perform.
