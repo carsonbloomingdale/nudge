@@ -10,6 +10,7 @@ import {
   fetchCurrentUser,
   fetchCurrentUserResilient,
   logoutApi,
+  mergeAuthMeData,
   normalizeUserPayload,
   refreshSession,
 } from "../api/authApi";
@@ -111,9 +112,9 @@ export function AuthProvider({ children }) {
     const { user: fromMe, error: meError } =
       await fetchCurrentUserResilient();
 
-    const nextUser = fromMe ?? (!meError ? fromResponse : null);
+    const nextUser = fromMe ?? fromResponse;
 
-    if (meError) {
+    if (meError && !nextUser?.userId) {
       clearSessionStorage();
       setUser(null);
       setStatus("unauthenticated");
@@ -160,17 +161,17 @@ export function AuthProvider({ children }) {
    * @returns {AuthUser | null}
    */
   const applyMeResponse = useCallback((data) => {
-    const next = normalizeUserPayload(data);
-    if (!next?.userId) {
-      return null;
-    }
+    let mergedOut = null;
     setUser((prev) => {
-      const merged =
-        prev?.userId === next.userId ? { ...prev, ...next } : next;
-      writeDisplayProfile(merged);
-      return merged;
+      const merged = mergeAuthMeData(prev, data);
+      mergedOut = merged;
+      if (merged) {
+        writeDisplayProfile(merged);
+        return merged;
+      }
+      return prev;
     });
-    return next;
+    return mergedOut;
   }, []);
 
   const value = useMemo(

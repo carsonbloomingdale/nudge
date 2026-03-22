@@ -318,7 +318,10 @@ export default function SettingsPage() {
     setVerifySubmitPending(true);
     try {
       const { data } = await postVerifyPhoneCode(digits);
-      applyMeResponse(data);
+      const applied = applyMeResponse(data);
+      if (!applied) {
+        await refreshUser();
+      }
       setVerifyCode("");
       setVerifySuccess("Phone verified. SMS reminders are fully enabled.");
     } catch (err) {
@@ -326,7 +329,7 @@ export default function SettingsPage() {
     } finally {
       setVerifySubmitPending(false);
     }
-  }, [verifyCode, applyMeResponse]);
+  }, [verifyCode, applyMeResponse, refreshUser]);
 
   const onSmsTest = useCallback(async () => {
     setSmsTestError(null);
