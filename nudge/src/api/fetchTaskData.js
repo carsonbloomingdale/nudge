@@ -1,30 +1,17 @@
-import axios from "axios";
-import { API_BASE_URL } from "./apiConfig";
+import http from "./httpClient";
 import saveUserData from "./saveUserData";
 
-export const fetchTaskData = async (didToday, cookies, userId) => {
+export default async function fetchTaskData(didToday, taskHistory) {
   if (!didToday) {
     return;
   }
 
-  const config = {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
+  const { data } = await http.post("/api/tasks/enrich", {
+    task: didToday,
+    taskHistory: taskHistory ?? [],
+  });
 
-  const response = await axios.post(
-    `${API_BASE_URL}/api/tasks/enrich`,
-    {
-      task: didToday,
-      taskHistory: cookies ?? [],
-    },
-    config,
-  );
-  const parsedResponse = response.data?.task ?? {};
-  await saveUserData(userId, parsedResponse);
-
+  const parsedResponse = data?.task ?? data ?? {};
+  await saveUserData(parsedResponse);
   return parsedResponse;
-};
-
-export default fetchTaskData;
+}

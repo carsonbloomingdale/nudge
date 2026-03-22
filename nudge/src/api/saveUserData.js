@@ -1,26 +1,8 @@
-import axios from "axios";
-import { API_BASE_URL } from "./apiConfig";
+import http from "./httpClient";
 
 /**
- * Persists enriched task fields + user_id. Call after POST /api/tasks/enrich;
- * body matches server POST /tasks/ expectations (enriched task + user_id).
+ * Persists enriched task fields. User is inferred from the access JWT / cookie on the server.
  */
-const saveUserData = async (userId, newTask) => {
-  if (!userId) {
-    return;
-  }
-
-  const config = {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
-
-  return await axios.post(
-    `${API_BASE_URL}/tasks/`,
-    { user_id: userId, ...newTask },
-    config,
-  );
-};
-
-export default saveUserData;
+export default async function saveUserData(newTask) {
+  return http.post("/tasks/", newTask);
+}
