@@ -1,6 +1,11 @@
 import { Link, Outlet } from "react-router-dom";
 import styled from "styled-components";
 import { useAuth } from "../auth/AuthContext";
+import BottomNav from "../components/mobile/BottomNav";
+import MobileComposer from "../components/mobile/MobileComposer";
+import { AppShellProvider, useAppShell } from "../context/AppShellContext";
+
+const LG = "1024px";
 
 function userInitial(user) {
   const raw = (user?.username || user?.email || "").trim();
@@ -43,27 +48,34 @@ const Header = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
+  gap: 0.65rem;
+  min-height: 56px;
+  padding: 0 0.875rem;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   background: hsl(var(--background) / 0.8);
   border-bottom: 1px solid hsl(var(--border));
 
-  @media (min-width: 640px) {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+  @media (min-width: ${LG}) {
+    min-height: 64px;
+    gap: 1rem;
+    padding: 0 1.5rem;
   }
 `;
 
 const Brand = styled(Link)`
+  flex-shrink: 0;
   font-family: var(--font-display), serif;
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 400;
   text-decoration: none;
   color: hsl(var(--foreground));
   letter-spacing: -0.02em;
   line-height: 1;
+
+  @media (min-width: ${LG}) {
+    font-size: 1.35rem;
+  }
 
   &:hover {
     color: hsl(var(--primary));
@@ -76,26 +88,72 @@ const Brand = styled(Link)`
   }
 `;
 
+const Spacer = styled.div`
+  flex: 1;
+  min-width: 0.5rem;
+`;
+
+const StreakPill = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  background: hsl(var(--accent) / 0.45);
+  border: 1px solid hsl(var(--border) / 0.45);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1;
+  max-width: 42vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @media (min-width: ${LG}) {
+    font-size: 0.8125rem;
+    padding: 0.4rem 0.75rem;
+    max-width: none;
+  }
+`;
+
+const StreakNum = styled.span`
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--primary));
+`;
+
 const NavActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
+
+  @media (min-width: ${LG}) {
+    gap: 0.5rem;
+  }
 `;
 
 const AvatarLink = styled(Link)`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.125rem;
+  height: 2.125rem;
   border-radius: 9999px;
   background: hsl(var(--primary) / 0.15);
   color: hsl(var(--primary));
   font-family: var(--font-sans), sans-serif;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   text-decoration: none;
   transition: transform 200ms ease, box-shadow 200ms ease;
+
+  @media (min-width: ${LG}) {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 0.875rem;
+  }
 
   &:hover {
     box-shadow: 0 4px 14px hsl(var(--primary) / 0.2);
@@ -112,7 +170,7 @@ const AvatarLink = styled(Link)`
 `;
 
 const IconButton = styled(Link)`
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 2.25rem;
@@ -124,6 +182,10 @@ const IconButton = styled(Link)`
   text-decoration: none;
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
   transition: box-shadow 300ms ease, transform 200ms ease;
+
+  @media (min-width: ${LG}) {
+    display: flex;
+  }
 
   &:hover {
     box-shadow: 0 4px 14px hsl(var(--foreground) / 0.08);
@@ -145,11 +207,19 @@ const Main = styled.main`
   max-width: 64rem;
   margin-left: auto;
   margin-right: auto;
-  padding: 2rem 1rem 3rem;
+  padding: 1.25rem 1rem 2rem;
+
+  @media (max-width: 1023px) {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  }
 
   @media (min-width: 640px) {
     padding-left: 1.5rem;
     padding-right: 1.5rem;
+  }
+
+  @media (min-width: ${LG}) {
+    padding: 2rem 1.5rem 3rem;
   }
 `;
 
@@ -158,21 +228,36 @@ const FooterNote = styled.p`
   font-size: 0.8125rem;
   color: hsl(var(--muted-foreground));
   text-align: center;
+
+  @media (max-width: 1023px) {
+    display: none;
+  }
 `;
 
-export default function AppLayout() {
+function AppLayoutInner() {
   const { user } = useAuth();
+  const { streakCount } = useAppShell();
   const initial = userInitial(user);
+  const streakLabel =
+    streakCount === 1 ? "day" : "days";
 
   return (
     <Shell>
       <Header>
         <Brand to="/app">nudge</Brand>
+        <Spacer aria-hidden />
+        <StreakPill title="Consecutive days you’ve logged something">
+          <span aria-hidden>✦</span>
+          <span>
+            <StreakNum className="tabular-nums">{streakCount}</StreakNum>{" "}
+            {streakLabel}
+          </span>
+        </StreakPill>
         <NavActions>
           <AvatarLink
             to="/app/account"
-            aria-label="Account information"
-            title="Account"
+            aria-label="Profile and account"
+            title="Profile"
           >
             {initial}
           </AvatarLink>
@@ -189,6 +274,16 @@ export default function AppLayout() {
         <Outlet />
         <FooterNote>&copy; Carson Bloomingdale 2024</FooterNote>
       </Main>
+      <BottomNav />
+      <MobileComposer />
     </Shell>
+  );
+}
+
+export default function AppLayout() {
+  return (
+    <AppShellProvider>
+      <AppLayoutInner />
+    </AppShellProvider>
   );
 }
