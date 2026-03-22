@@ -1,4 +1,8 @@
 import styled, { keyframes } from "styled-components";
+import {
+  FeaturePreviewBadge,
+  PageTitleWithBadge,
+} from "../ui/FeaturePreviewBadge";
 
 const LG = "1024px";
 
@@ -134,6 +138,15 @@ const PreviewLi = styled.li`
 export function GoalsPreview() {
   return (
     <PreviewList>
+      <PreviewLi
+        style={{
+          borderLeft: "none",
+          paddingLeft: 0,
+          marginBottom: "0.35rem",
+        }}
+      >
+        <FeaturePreviewBadge compact />
+      </PreviewLi>
       {GOALS.slice(0, 2).map((text) => (
         <PreviewLi key={text}>{text}</PreviewLi>
       ))}
@@ -153,10 +166,13 @@ export function GoalsContent() {
   return (
     <Wrap>
       <header className="animate-fade-up stagger-0">
-        <Title>Goals</Title>
+        <PageTitleWithBadge>
+          <Title>Goals</Title>
+          <FeaturePreviewBadge />
+        </PageTitleWithBadge>
         <Lead>
-          Soft nudges you can revisit — tap nothing to complete; this is a
-          space to dream in short sentences.
+          Soft nudges you can revisit — tap nothing to complete. These prompts
+          are static for now; saving goals to your account comes later.
         </Lead>
       </header>
       <List>

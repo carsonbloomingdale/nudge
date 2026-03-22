@@ -64,12 +64,12 @@ export function AppShellProvider({ children }) {
     };
   }, []);
 
-  const submitJournalEntry = useCallback(async (text) => {
+  const submitJournalEntry = useCallback(async (text, options) => {
     const fn = journalSubmitRef.current;
     if (!fn) {
       return false;
     }
-    await fn(text);
+    await fn(text, options);
     return true;
   }, []);
 

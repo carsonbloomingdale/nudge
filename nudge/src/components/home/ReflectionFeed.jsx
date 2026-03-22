@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { legacyTasksToJournals } from "../../model/journal";
 import { traitForEntry, formatReflectionTime } from "./traitUtils";
 
 const SectionTitle = styled.h2`
@@ -65,6 +66,13 @@ const Body = styled.p`
   overflow-wrap: break-word;
 `;
 
+const MoreEntries = styled.p`
+  margin: 0.5rem 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+`;
+
 const PhotoNote = styled.p`
   display: flex;
   align-items: center;
@@ -95,8 +103,18 @@ function CameraIcon() {
   );
 }
 
-export default function ReflectionFeed({ taskList, title = "Recent reflections" }) {
-  if (!taskList?.length) {
+function lineHasPhoto(item) {
+  return !!(item.photo_url || item.photoUrl || item.has_photo || item.image);
+}
+
+export default function ReflectionFeed({
+  taskList,
+  journals: journalsProp,
+  title = "Recent reflections",
+}) {
+  const journals = journalsProp ?? legacyTasksToJournals(taskList ?? []);
+
+  if (!journals.length) {
     return (
       <section aria-label={title}>
         <SectionTitle>{title}</SectionTitle>
@@ -108,28 +126,43 @@ export default function ReflectionFeed({ taskList, title = "Recent reflections" 
     );
   }
 
-  const items = [...taskList].reverse().slice(0, 12);
+  const rows = [...journals].reverse().slice(0, 12);
 
   return (
     <section aria-label={title}>
       <SectionTitle>{title}</SectionTitle>
       <Stack>
-        {items.map((item, index) => {
-          const trait = traitForEntry(item.label, index);
-          const ts = formatReflectionTime(item);
-          const hasPhoto =
-            item.photo_url || item.photoUrl || item.has_photo || item.image;
+        {rows.map((journal, index) => {
+          const items = journal.items ?? [];
+          const primary = items[0];
+          const trait = traitForEntry(primary?.label, index);
+          const ts = formatReflectionTime({
+            submittedAt: journal.submittedAt,
+            created_at: primary?.created_at,
+            createdAt: primary?.createdAt,
+            updated_at: primary?.updated_at,
+            timestamp: primary?.timestamp,
+          });
+          const hasPhoto = items.some(lineHasPhoto);
           return (
             <Card
-              key={`${item.label}-${index}`}
+              key={journal.id}
               className="animate-fade-up"
               style={{ animationDelay: `${index * 80}ms` }}
             >
               <TopRow>
                 <TraitBadge $var={trait.cssVar}>{trait.label}</TraitBadge>
-                <Time dateTime={item.created_at}>{ts}</Time>
+                <Time dateTime={journal.submittedAt || primary?.created_at}>
+                  {ts}
+                </Time>
               </TopRow>
-              <Body>{item.label}</Body>
+              <Body>{primary?.label}</Body>
+              {items.length > 1 ? (
+                <MoreEntries>
+                  +{items.length - 1} more{" "}
+                  {items.length === 2 ? "entry" : "entries"} in this log
+                </MoreEntries>
+              ) : null}
               {hasPhoto ? (
                 <PhotoNote>
                   <CameraIcon />

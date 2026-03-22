@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import styled from "styled-components";
 import { useAppShell } from "../../context/AppShellContext";
+import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
 
 const LG = "1024px";
 
@@ -84,6 +85,15 @@ const Dot = styled.span`
     opacity: 1;
     transform: scale(1);
   }
+`;
+
+const TabLabel = styled.span`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  min-width: 0;
+  line-height: 1.1;
 `;
 
 const FabWrap = styled.div`
@@ -188,7 +198,10 @@ export default function BottomNav() {
         </TabLink>
         <TabLink to="/app/insights">
           <IconSpark />
-          Insights
+          <TabLabel>
+            <span>Insights</span>
+            <FeaturePreviewBadge compact />
+          </TabLabel>
           <Dot aria-hidden />
         </TabLink>
       </SidePair>
@@ -204,7 +217,10 @@ export default function BottomNav() {
       <SidePair>
         <TabLink to="/app/goals">
           <IconTarget />
-          Goals
+          <TabLabel>
+            <span>Goals</span>
+            <FeaturePreviewBadge compact />
+          </TabLabel>
           <Dot aria-hidden />
         </TabLink>
         <TabLink to="/app/account">

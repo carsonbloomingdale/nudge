@@ -1,4 +1,8 @@
 import styled, { keyframes } from "styled-components";
+import {
+  FeaturePreviewBadge,
+  PageTitleWithBadge,
+} from "../ui/FeaturePreviewBadge";
 
 const LG = "1024px";
 
@@ -237,6 +241,13 @@ const PreviewMeta = styled.p`
   line-height: 1.4;
 `;
 
+const PreviewMetaRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+`;
+
 /** Compact preview for book cover (no animation). */
 export function InsightsPreview() {
   return (
@@ -245,10 +256,12 @@ export function InsightsPreview() {
         <PreviewCenter />
       </PreviewWheel>
       <PreviewCopy>
-        <PreviewMeta>
-          Trait wheel + six-dimension balance — illustrative until live data
-          lands.
-        </PreviewMeta>
+        <PreviewMetaRow>
+          <FeaturePreviewBadge compact />
+          <PreviewMeta as="span">
+            Trait wheel and balance — static preview, not live scores.
+          </PreviewMeta>
+        </PreviewMetaRow>
         <PreviewBarTrack aria-hidden>
           <PreviewBarFill />
         </PreviewBarTrack>
@@ -262,10 +275,13 @@ export function InsightsContent() {
   return (
     <Wrap>
       <header>
-        <Title>Insights</Title>
+        <PageTitleWithBadge>
+          <Title>Insights</Title>
+          <FeaturePreviewBadge />
+        </PageTitleWithBadge>
         <Lead>
-          A gentle snapshot of how you&apos;re showing up — illustrative for
-          now; real scoring can plug in later.
+          A gentle snapshot of how you&apos;re showing up. Numbers here are a
+          design preview until analytics connect to the backend.
         </Lead>
       </header>
       <WheelCard>

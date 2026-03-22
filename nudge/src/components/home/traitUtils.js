@@ -19,6 +19,8 @@ export function traitForEntry(label, index = 0) {
 
 export function formatReflectionTime(task) {
   const raw =
+    task?.submittedAt ??
+    task?.submitted_at ??
     task?.created_at ??
     task?.createdAt ??
     task?.updated_at ??
