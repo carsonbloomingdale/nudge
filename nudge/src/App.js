@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import axios from "axios";
 import "./App.css";
 import fetchTaskData from "./api/fetchTaskData";
 import fetchSuggestion from "./api/fetchSuggestion";
@@ -6,7 +7,8 @@ import Suggestion from "./components/Suggestion";
 import styled from "styled-components";
 import debounce from "debounce";
 import TaskList from "./components/TaskList";
-import fetchTasks, { fetchTasksById } from "./api/fetchTasks";
+import { loadUserByUsername, loadUserById } from "./api/fetchTasks";
+import { createUser } from "./api/createUser";
 
 const StyledHeader = styled.div`
   font-size: 24px;
@@ -47,6 +49,18 @@ const StyledSubmitBtn = styled.button`
     background-color: #1f4f37;
     cursor: pointer;
   }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+`;
+
+/** Wider label for auth actions (Create user / Loading…) */
+const StyledAuthSubmitBtn = styled(StyledSubmitBtn)`
+  width: auto;
+  min-width: 120px;
+  padding: 0 16px;
 `;
 
 const StyledHelpBtn = styled.button`
@@ -105,6 +119,48 @@ const StyledCopyright = styled.div`
   font-size: 14px;
 `;
 
+const StyledMuted = styled.p`
+  margin: 0 20px 16px;
+  max-width: 70vw;
+  text-align: center;
+  color: #133926;
+  opacity: 0.85;
+  line-height: 1.4;
+  font-size: 15px;
+`;
+
+const StyledError = styled.p`
+  margin: 0 20px 12px;
+  max-width: 70vw;
+  text-align: center;
+  color: #8b2c2c;
+  font-size: 14px;
+`;
+
+const StyledSecondaryBtn = styled.button`
+  background: transparent;
+  color: #133926;
+  border: 1px solid #133926;
+  width: fit-content;
+  padding: 8px 20px;
+  height: auto;
+  min-height: 36px;
+  font-size: 15px;
+  border-radius: 15px;
+  margin-top: 8px;
+  cursor: pointer;
+  font-family: "Varela Round", sans-serif;
+
+  &:hover {
+    background: hsla(150, 30%, 95%, 0.9);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 function App() {
   const [didToday, setDidToday] = useState();
   const [submittedDid, setSubmittedDid] = useState();
@@ -112,38 +168,130 @@ function App() {
   const [taskList, setTaskList] = useState();
   const [currentSubmitted, setCurrentSubmitted] = useState();
   const [userId, setUserId] = useState("");
-  const [userName, setUserName] = useState("");
   const [draftUserName, setDraftUserName] = useState("");
+  /** `lookup` = sign in by username; `create` = username 404, offer create */
+  const [authView, setAuthView] = useState("lookup");
+  const [usernameToCreate, setUsernameToCreate] = useState("");
+  const [authError, setAuthError] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
-  const handleSetTaskList = useCallback(
-    (userData) => {
-      const responseTaskList = userData.data.person_tasks;
-      setTaskList(responseTaskList);
-      setUserId(userData.data.user_id);
-      localStorage.setItem("nudge_user_id", userData.data.user_id);
-    },
-    [setTaskList],
-  );
+  const handleSetTaskList = useCallback((userData) => {
+    const responseTaskList = userData.data.person_tasks ?? [];
+    setTaskList(responseTaskList);
+    setUserId(userData.data.user_id);
+    localStorage.setItem("nudge_user_id", userData.data.user_id);
+  }, []);
 
   useEffect(() => {
     if (submittedDid && taskList && currentSubmitted !== submittedDid) {
       setTaskList([...taskList, { label: submittedDid }]);
       setCurrentSubmitted(submittedDid);
     }
-    if (!userId) {
-      const localUserId = localStorage.getItem("nudge_user_id");
-      if (localUserId) {
-        setUserId(localUserId);
-      }
-    }
-    if (!taskList && userId) {
-      fetchTasksById(userId).then(handleSetTaskList);
-    }
+  }, [submittedDid, taskList, currentSubmitted]);
 
-    if (!taskList && userName) {
-      fetchTasks(userName).then(handleSetTaskList);
+  useEffect(() => {
+    if (userId) {
+      return;
     }
-  }, [submittedDid, taskList, currentSubmitted, userName, userId]);
+    const localUserId = localStorage.getItem("nudge_user_id");
+    if (localUserId) {
+      setUserId(localUserId);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || taskList !== undefined) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const result = await loadUserById(userId);
+      if (cancelled) {
+        return;
+      }
+      if (result.ok) {
+        handleSetTaskList(result.response);
+        return;
+      }
+      if (result.notFound) {
+        localStorage.removeItem("nudge_user_id");
+        setUserId("");
+        setAuthError(
+          "Your saved session is no longer valid. Sign in with your username.",
+        );
+        return;
+      }
+      localStorage.removeItem("nudge_user_id");
+      setUserId("");
+      setAuthError("Could not restore your session. Please sign in again.");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, taskList, handleSetTaskList]);
+
+  const handleUserFetchSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const name = draftUserName.trim();
+      if (!name) {
+        setAuthError("Enter a username.");
+        return;
+      }
+      setAuthError(null);
+      setIsAuthLoading(true);
+      const result = await loadUserByUsername(name);
+      setIsAuthLoading(false);
+      if (result.ok) {
+        setAuthView("lookup");
+        setUsernameToCreate("");
+        handleSetTaskList(result.response);
+        return;
+      }
+      if (result.notFound) {
+        setUsernameToCreate(name);
+        setDraftUserName(name);
+        setAuthView("create");
+        return;
+      }
+      setAuthError("Could not look up that user. Check your connection and try again.");
+    },
+    [draftUserName, handleSetTaskList],
+  );
+
+  const handleCreateUserSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!usernameToCreate.trim()) {
+        return;
+      }
+      setAuthError(null);
+      setIsAuthLoading(true);
+      try {
+        const res = await createUser(usernameToCreate);
+        handleSetTaskList(res);
+        setAuthView("lookup");
+        setUsernameToCreate("");
+        setDraftUserName("");
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response?.status === 409) {
+          setAuthError("That username is already taken. Try another.");
+        } else {
+          setAuthError("Could not create this user. Try again or pick a different name.");
+        }
+      } finally {
+        setIsAuthLoading(false);
+      }
+    },
+    [usernameToCreate, handleSetTaskList],
+  );
+
+  const handleBackToLookup = useCallback(() => {
+    setAuthView("lookup");
+    setUsernameToCreate("");
+    setDraftUserName("");
+    setAuthError(null);
+  }, []);
 
   const handleSubmit = useCallback(
     async (e) => {
@@ -153,15 +301,7 @@ function App() {
 
       setDidToday();
     },
-    [setSubmittedDid, didToday, taskList],
-  );
-
-  const handleUserFetchSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-      setUserName(draftUserName);
-    },
-    [draftUserName],
+    [didToday, taskList, userId],
   );
 
   const handleGetSuggestion = useCallback(async () => {
@@ -172,23 +312,21 @@ function App() {
     setSuggestion(suggestionData);
   }, [setSuggestion, taskList]);
 
-  const handleChangeInput = useCallback(
-    debounce(({ target: { value } }) => {
-      setDidToday(value);
-    }, 200),
+  const handleChangeInput = useMemo(
+    () =>
+      debounce(({ target: { value } }) => {
+        setDidToday(value);
+      }, 200),
     [setDidToday],
   );
 
-  const handleChangeUserInput = useCallback(
-    debounce(({ target: { value } }) => {
-      setDraftUserName(value);
-    }, 100),
-    [setDraftUserName],
-  );
+  const handleChangeUserName = useCallback((e) => {
+    setDraftUserName(e.target.value);
+  }, []);
 
   return (
     <div className="App">
-      {userId && <TaskList taskList={taskList} submittedDid={submittedDid} />}
+      {userId && <TaskList taskList={taskList} />}
       <header className="App-header">
         {userId ? (
           <>
@@ -214,16 +352,42 @@ function App() {
             </StyledMain>
             <StyledCopyright>&copy; Carson Bloomingdale 2024</StyledCopyright>
           </>
+        ) : authView === "create" ? (
+          <StyledMain>
+            <StyledHeader>Create account</StyledHeader>
+            <StyledMuted>
+              There is no user named <strong>{usernameToCreate}</strong>. Create
+              this account to start logging tasks?
+            </StyledMuted>
+            {authError ? <StyledError>{authError}</StyledError> : null}
+            <StyledForm onSubmit={handleCreateUserSubmit}>
+              <StyledAuthSubmitBtn type="submit" disabled={isAuthLoading}>
+                {isAuthLoading ? "Creating…" : "Create user"}
+              </StyledAuthSubmitBtn>
+            </StyledForm>
+            <StyledSecondaryBtn
+              type="button"
+              disabled={isAuthLoading}
+              onClick={handleBackToLookup}
+            >
+              Use a different username
+            </StyledSecondaryBtn>
+          </StyledMain>
         ) : (
           <StyledMain>
             <StyledHeader>Username</StyledHeader>
+            {authError ? <StyledError>{authError}</StyledError> : null}
             <StyledForm onSubmit={handleUserFetchSubmit}>
               <StyledInput
                 key="userName"
                 name="userName"
-                onChange={handleChangeUserInput}
+                value={draftUserName}
+                onChange={handleChangeUserName}
+                autoComplete="username"
               />
-              <StyledSubmitBtn type="submit">Submit</StyledSubmitBtn>
+              <StyledAuthSubmitBtn type="submit" disabled={isAuthLoading}>
+                {isAuthLoading ? "Loading…" : "Submit"}
+              </StyledAuthSubmitBtn>
             </StyledForm>
           </StyledMain>
         )}

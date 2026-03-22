@@ -20,6 +20,11 @@
 .env.development.local
 .env.test.local
 .env.production.local
+# CRA app under nudge/
+nudge/.env.local
+nudge/.env.development.local
+nudge/.env.test.local
+nudge/.env.production.local
 
 npm-debug.log*
 yarn-debug.log*

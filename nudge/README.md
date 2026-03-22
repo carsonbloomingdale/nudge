@@ -11,10 +11,30 @@ All requests use a single origin from `REACT_APP_API_BASE_URL` (see `src/api/api
 | `POST` | `/api/tasks/enrich` | Normalize “what I did today” → task fields (OpenAI on server). |
 | `POST` | `/api/suggestions` | Next-task suggestion + rationale. |
 | `POST` | `/tasks/` | Save enriched task + `user_id` (after enrich). |
-| `GET` | `/user_by_username/:name` | Load user + task list. |
-| `GET` | `/user_by_id/:id` | Load user + task list. |
+| `POST` | `/users/` | Create user; body `{ "username": "..." }`. Response same shape as GET user (e.g. `user_id`, `person_tasks`). **409** if username taken. |
+| `GET` | `/user_by_username/:name` | Load user + task list. **404** if user does not exist. |
+| `GET` | `/user_by_id/:id` | Load user + task list. **404** if id invalid / user removed. |
 
 Client sends `Content-Type: application/json` only — no OpenAI key in the browser.
+
+## Environment variables
+
+1. Copy the example file and edit locally (file is gitignored):
+
+   ```bash
+   cd nudge
+   cp .env.example .env.local
+   ```
+
+2. **Local full stack:** run your API on `PORT` (e.g. `8000`) with `HOST=0.0.0.0`, and set:
+
+   `REACT_APP_API_BASE_URL=http://127.0.0.1:8000`
+
+   The React dev server (`npm start`) uses `HOST` / `PORT` in `.env.local` for where the **frontend** listens (default in example: `0.0.0.0:3000`). The **backend** port is separate.
+
+3. **Production:** set `REACT_APP_API_BASE_URL` in your build environment (e.g. Koyeb). `npm run build` does not use `.env.local` — only `.env.production` / `.env.production.local` and host-provided env.
+
+Backend-only template (separate repo): see `docs/backend.env.example` in the repo root.
 
 ## Available Scripts
 
@@ -23,7 +43,7 @@ In the project directory, you can run:
 ### `npm start`
 
 Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+With `.env.local` from `.env.example`, open [http://localhost:3000](http://localhost:3000) (or your chosen `PORT`) to view it in your browser.
 
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
