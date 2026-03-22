@@ -290,8 +290,8 @@ export default function NudgeHomePage() {
           <ReflectionFeed taskList={taskList} title="Recent reflections" />
         </DesktopLeft>
         <DesktopRight>
-          <IdentityRadar />
-          <TraitGrowthPanel />
+          <IdentityRadar tasks={taskList} />
+          <TraitGrowthPanel tasks={taskList} />
           <ActiveGoalsPanel />
         </DesktopRight>
       </DesktopMain>

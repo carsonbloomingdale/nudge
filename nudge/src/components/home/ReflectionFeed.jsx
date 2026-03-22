@@ -1,5 +1,10 @@
 import styled from "styled-components";
-import { traitForEntry, formatReflectionTime } from "./traitUtils";
+import {
+  extractPersonalityTraits,
+  formatReflectionTime,
+  traitForEntry,
+  traitThemeForSlug,
+} from "./traitUtils";
 
 const SectionTitle = styled.h2`
   margin: 0 0 1rem;
@@ -46,8 +51,18 @@ const TraitBadge = styled.span`
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  background: hsl(var(${(p) => p.$var}) / 0.12);
-  color: hsl(var(${(p) => p.$var}));
+  background: ${(p) =>
+    p.$hsl
+      ? `hsl(${p.$hsl} / 0.14)`
+      : p.$var
+        ? `hsl(var(${p.$var}) / 0.12)`
+        : "hsl(var(--primary) / 0.12)"};
+  color: ${(p) =>
+    p.$hsl
+      ? `hsl(${p.$hsl})`
+      : p.$var
+        ? `hsl(var(${p.$var}))`
+        : "hsl(var(--primary))"};
 `;
 
 const Time = styled.time`
@@ -115,7 +130,11 @@ export default function ReflectionFeed({ taskList, title = "Recent reflections" 
       <SectionTitle>{title}</SectionTitle>
       <Stack>
         {items.map((item, index) => {
-          const trait = traitForEntry(item.label, index);
+          const fromApi = extractPersonalityTraits(item);
+          const fallback = traitForEntry(item.label, index);
+          const trait = fromApi.length
+            ? traitThemeForSlug(fromApi[0])
+            : { label: fallback.label, cssVar: fallback.cssVar, hsl: null };
           const ts = formatReflectionTime(item);
           const hasPhoto =
             item.photo_url || item.photoUrl || item.has_photo || item.image;
@@ -126,7 +145,9 @@ export default function ReflectionFeed({ taskList, title = "Recent reflections" 
               style={{ animationDelay: `${index * 80}ms` }}
             >
               <TopRow>
-                <TraitBadge $var={trait.cssVar}>{trait.label}</TraitBadge>
+                <TraitBadge $var={trait.cssVar} $hsl={trait.hsl}>
+                  {trait.label}
+                </TraitBadge>
                 <Time dateTime={item.created_at}>{ts}</Time>
               </TopRow>
               <Body>{item.label}</Body>

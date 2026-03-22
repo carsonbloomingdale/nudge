@@ -8,6 +8,118 @@ export const TRAIT_DEFS = [
   { id: "disciplined", label: "Disciplined", cssVar: "--trait-disciplined" },
 ];
 
+const TRAIT_BY_ID = Object.fromEntries(TRAIT_DEFS.map((d) => [d.id, d]));
+
+/** Stable slug for counting (e.g. "Creative " → "creative"). */
+export function normalizeTraitSlug(s) {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+function labelFromSlug(slug) {
+  if (!slug) {
+    return "";
+  }
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/**
+ * @param {unknown} task
+ * @returns {string[]}
+ */
+export function extractPersonalityTraits(task) {
+  const raw =
+    task?.personality_traits ?? task?.personalityTraits ?? [];
+  const arr = Array.isArray(raw) ? raw : [];
+  const slugs = [];
+  for (const x of arr) {
+    const slug = normalizeTraitSlug(
+      typeof x === "string" ? x : String(x ?? ""),
+    );
+    if (slug) {
+      slugs.push(slug);
+    }
+  }
+  return slugs;
+}
+
+function hashString(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+/** HSL components for unknown dynamic traits (no theme token). */
+export function hslForTraitSlug(slug) {
+  const hue = hashString(slug) % 360;
+  return `${hue} 42% 46%`;
+}
+
+/**
+ * Display label + color: known traits use CSS vars; any other string uses a stable HSL.
+ * @param {string} slug
+ */
+export function traitThemeForSlug(slug) {
+  const def = TRAIT_BY_ID[slug];
+  if (def) {
+    return { label: def.label, cssVar: def.cssVar, hsl: null };
+  }
+  return {
+    label: labelFromSlug(slug) || slug,
+    cssVar: null,
+    hsl: hslForTraitSlug(slug),
+  };
+}
+
+export const DEFAULT_TRAIT_RADAR_CAP = 8;
+export const DEFAULT_TRAIT_GROWTH_CAP = 12;
+
+/**
+ * Aggregate personality_traits across tasks by occurrence; scores are relative to the top trait.
+ * @param {unknown[] | undefined} tasks
+ * @param {number} [maxTraits]
+ */
+export function aggregateTraitStatsFromTasks(
+  tasks,
+  maxTraits = DEFAULT_TRAIT_RADAR_CAP,
+) {
+  const counts = new Map();
+  for (const task of tasks ?? []) {
+    for (const slug of extractPersonalityTraits(task)) {
+      counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    }
+  }
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const maxCount = sorted[0]?.[1] ?? 0;
+  const cap = Math.max(1, maxTraits);
+  const ordered = sorted.slice(0, cap).map(([slug, count]) => {
+    const theme = traitThemeForSlug(slug);
+    return {
+      id: slug,
+      label: theme.label,
+      count,
+      normalizedScore: maxCount > 0 ? count / maxCount : 0,
+      cssVar: theme.cssVar,
+      hsl: theme.hsl,
+    };
+  });
+  return {
+    orderedTraits: ordered,
+    maxCount,
+    hasData: ordered.length > 0,
+    totalTraitMentions: sorted.reduce((s, [, c]) => s + c, 0),
+  };
+}
+
 export function traitForEntry(label, index = 0) {
   const s = label ?? "";
   let h = index * 17;
