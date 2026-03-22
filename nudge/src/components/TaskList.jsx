@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import fetchTasks from "../api/fetchTasks";
 
 const TaskListDiv = styled.div`
   position: absolute;

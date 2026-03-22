@@ -1,39 +1,49 @@
 import axios from "axios";
+import { API_BASE_URL } from "./apiConfig";
 
-const fetchTasks = async (userName) => {
-  if (!userName) {
-    return;
+function encodePathSegment(value) {
+  return encodeURIComponent(String(value));
+}
+
+/**
+ * @returns {Promise<{ ok: true, response: import("axios").AxiosResponse } | { ok: false, notFound: true } | { ok: false, notFound: false, error: unknown }>}
+ */
+export async function loadUserByUsername(userName) {
+  const trimmed = userName?.trim();
+  if (!trimmed) {
+    return { ok: false, notFound: false, error: new Error("Username is required") };
   }
-
-  const config = {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
-  if (userName) {
-    return await axios.get(
-      `https://urgent-maria-nudge-9f4b7e98.koyeb.app/user_by_username/${userName}`,
-      config,
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/user_by_username/${encodePathSegment(trimmed)}`,
+      { headers: { "Content-Type": "application/json" } },
     );
+    return { ok: true, response };
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
+      return { ok: false, notFound: true };
+    }
+    return { ok: false, notFound: false, error: e };
   }
-};
+}
 
-export const fetchTasksById = async (userId) => {
+/**
+ * @returns {Promise<{ ok: true, response: import("axios").AxiosResponse } | { ok: false, notFound: true } | { ok: false, notFound: false, error: unknown }>}
+ */
+export async function loadUserById(userId) {
   if (!userId) {
-    return;
+    return { ok: false, notFound: false, error: new Error("User id is required") };
   }
-
-  const config = {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
-  if (userId) {
-    return await axios.get(
-      `https://urgent-maria-nudge-9f4b7e98.koyeb.app/user_by_id/${userId}`,
-      config,
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/user_by_id/${encodePathSegment(userId)}`,
+      { headers: { "Content-Type": "application/json" } },
     );
+    return { ok: true, response };
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
+      return { ok: false, notFound: true };
+    }
+    return { ok: false, notFound: false, error: e };
   }
-};
-
-export default fetchTasks;
+}
