@@ -94,6 +94,94 @@ export const StyledMain = styled.div`
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 `;
 
+/** Product name — page h1 on auth screens (brand before task). */
+export const StyledAuthMark = styled.h1`
+  margin: 0 0 0.25rem;
+  padding: 0;
+  border: none;
+  text-align: center;
+  font-family: var(--font-display), serif;
+  font-size: clamp(1.5rem, 5vw, 1.85rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+  line-height: 1.1;
+`;
+
+/** Form section label (h2): sign in / create account, above fields. */
+export const StyledAuthFormTitle = styled.h2`
+  margin: 0 0 0.65rem;
+  width: 100%;
+  max-width: 320px;
+  padding: 0;
+  border: none;
+  text-align: center;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
+`;
+
+export const StyledAuthTagline = styled.p`
+  margin: 0 0 1rem;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.35;
+  color: hsl(var(--muted-foreground));
+  text-wrap: balance;
+  max-width: 16rem;
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+export const StyledAuthVisualRow = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: clamp(0.75rem, 4vw, 1.35rem);
+  margin: 0 auto 1.1rem;
+  width: 100%;
+  max-width: 19rem;
+`;
+
+export const StyledAuthVisualItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+`;
+
+export const StyledAuthIconCircle = styled.div`
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--primary) / 0.14);
+  color: hsl(var(--primary));
+  flex-shrink: 0;
+  transition: transform 180ms ease, background 180ms ease;
+
+  ${StyledAuthVisualItem}:hover & {
+    transform: translateY(-2px);
+    background: hsl(var(--primary) / 0.2);
+  }
+`;
+
+export const StyledAuthIconLabel = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  line-height: 1.15;
+`;
+
 export const StyledMuted = styled.p`
   margin: 0 0 1rem;
   max-width: 100%;

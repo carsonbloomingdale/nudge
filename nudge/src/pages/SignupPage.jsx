@@ -8,11 +8,12 @@ import {
 import axios from "axios";
 import { useAuth } from "../auth/AuthContext";
 import { register } from "../api/authApi";
+import AuthLoginPitch from "../components/auth/AuthLoginPitch";
 import {
+  StyledAuthFormTitle,
   StyledAuthSubmitBtn,
   StyledColumnForm,
   StyledError,
-  StyledHeader,
   StyledInput,
   StyledMain,
   StyledMuted,
@@ -97,14 +98,19 @@ export default function SignupPage() {
     <div className="App">
       <header className="App-header">
         <StyledMain>
-          <StyledHeader>Create account</StyledHeader>
+          <AuthLoginPitch showIcons={false} />
+          <StyledAuthFormTitle id="signup-form-heading">
+            Create account
+          </StyledAuthFormTitle>
           <StyledMuted>
-            Register with username, email, and a password (at least{" "}
-            {MIN_PASSWORD} characters). You will stay signed in via secure
-            cookies.
+            Choose a username, your email, and a password (at least{" "}
+            {MIN_PASSWORD} characters).
           </StyledMuted>
           {error ? <StyledError>{error}</StyledError> : null}
-          <StyledColumnForm onSubmit={onSubmit}>
+          <StyledColumnForm
+            aria-labelledby="signup-form-heading"
+            onSubmit={onSubmit}
+          >
             <StyledInput
               name="username"
               value={username}

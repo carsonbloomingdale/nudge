@@ -8,14 +8,14 @@ import {
 import axios from "axios";
 import { useAuth } from "../auth/AuthContext";
 import { login } from "../api/authApi";
+import AuthLoginPitch from "../components/auth/AuthLoginPitch";
 import {
+  StyledAuthFormTitle,
   StyledAuthSubmitBtn,
   StyledColumnForm,
   StyledError,
-  StyledHeader,
   StyledInput,
   StyledMain,
-  StyledMuted,
   AuthLinks,
 } from "../components/auth/authStyles";
 
@@ -75,14 +75,13 @@ export default function LoginPage() {
     <div className="App">
       <header className="App-header">
         <StyledMain>
-          <StyledHeader>Sign in</StyledHeader>
-          <StyledMuted>
-            Use the username or email and password for your account. The server
-            sets secure HTTP-only cookies — nothing auth-critical is stored in
-            localStorage.
-          </StyledMuted>
+          <AuthLoginPitch />
+          <StyledAuthFormTitle id="login-form-heading">Sign in</StyledAuthFormTitle>
           {error ? <StyledError>{error}</StyledError> : null}
-          <StyledColumnForm onSubmit={onSubmit}>
+          <StyledColumnForm
+            aria-labelledby="login-form-heading"
+            onSubmit={onSubmit}
+          >
             <StyledInput
               name="identifier"
               value={identifier}

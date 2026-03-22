@@ -16,9 +16,8 @@ export default function MagicLinkPage() {
         <StyledMain>
           <StyledHeader>Magic link</StyledHeader>
           <StyledMuted>
-            Email-based magic link is not implemented on the API yet (see
-            backend docs/AUTH.md). The live app uses password sign-in with
-            HTTP-only cookies instead.
+            Magic link sign-in isn&apos;t available yet. Use password sign-in
+            instead.
           </StyledMuted>
           <AuthLinks>
             <Link to="/auth/login">Back to sign in</Link>
