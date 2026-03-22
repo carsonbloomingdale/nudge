@@ -11,6 +11,8 @@ import AppLayout from "./layouts/AppLayout";
 import AccountPage from "./pages/AccountPage";
 import NudgeHomePage from "./pages/NudgeHomePage";
 import SettingsPage from "./pages/SettingsPage";
+import InsightsPage from "./pages/InsightsPage";
+import GoalsPage from "./pages/GoalsPage";
 
 function RootRedirect() {
   const { isAuthenticated, isRestoring } = useAuth();
@@ -59,6 +61,8 @@ function AppRoutes() {
         }
       >
         <Route index element={<NudgeHomePage />} />
+        <Route path="insights" element={<InsightsPage />} />
+        <Route path="goals" element={<GoalsPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
