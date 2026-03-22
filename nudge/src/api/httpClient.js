@@ -1,9 +1,11 @@
 import axios from "axios";
 import { API_BASE_URL } from "./apiConfig";
+import { readAccessToken } from "../auth/tokenStorage";
+import { refreshTokensRequest } from "./authRefresh";
 
 /**
- * Browser client for your API. Sends cookies (access + refresh) on every request.
- * On 401, attempts one POST /auth/refresh and retries the original request.
+ * Browser client: cookies (withCredentials) + optional Authorization: Bearer when the API returns tokens.
+ * On 401: POST /auth/refresh (cookies first, then { refresh_token } from sessionStorage if needed), then retry once.
  */
 const http = axios.create({
   baseURL: API_BASE_URL,
@@ -15,16 +17,22 @@ const http = axios.create({
 
 let refreshPromise = null;
 
-function refreshAccessCookie() {
-  return axios.post(
-    `${API_BASE_URL}/auth/refresh`,
-    {},
-    {
-      withCredentials: true,
-      headers: { "Content-Type": "application/json" },
-    },
-  );
-}
+http.interceptors.request.use((config) => {
+  const url = String(config.url ?? "");
+  const skipBearer =
+    url.includes("/auth/login") ||
+    url.includes("/auth/register") ||
+    url.includes("/auth/refresh");
+  if (!skipBearer) {
+    const token = readAccessToken();
+    if (token) {
+      const headers = axios.AxiosHeaders.from(config.headers ?? {});
+      headers.set("Authorization", `Bearer ${token}`);
+      config.headers = headers;
+    }
+  }
+  return config;
+});
 
 http.interceptors.response.use(
   (response) => response,
@@ -53,7 +61,7 @@ http.interceptors.response.use(
     cfg._retriedAfterRefresh = true;
     try {
       if (!refreshPromise) {
-        refreshPromise = refreshAccessCookie().finally(() => {
+        refreshPromise = refreshTokensRequest().finally(() => {
           refreshPromise = null;
         });
       }

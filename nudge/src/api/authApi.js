@@ -1,18 +1,10 @@
 import axios from "axios";
 import http from "./httpClient";
-import { API_BASE_URL } from "./apiConfig";
+import { refreshTokensRequest } from "./authRefresh";
 
-/** Used on cold start before other API calls. Avoids running the 401 interceptor. */
+/** Cold start: cookie refresh, then body refresh_token if cookies fail (see authRefresh). */
 export function refreshSession() {
-  return axios.post(
-    `${API_BASE_URL}/auth/refresh`,
-    {},
-    {
-      withCredentials: true,
-      headers: { "Content-Type": "application/json" },
-      skipAuthRefresh: true,
-    },
-  );
+  return refreshTokensRequest();
 }
 
 export function login(payload) {

@@ -1,5 +1,7 @@
+import { clearAuthTokens } from "./tokenStorage";
+
 /**
- * UI-only cache (not used to authorize API calls). Auth is HTTP-only cookies + JWT.
+ * UI-only cache (not used to authorize API calls). Auth is HTTP-only cookies + optional bearer tokens.
  * Written after successful login/register when the response includes a user payload,
  * or after GET /auth/me when that route exists.
  */
@@ -52,6 +54,7 @@ export function clearDisplayProfileOnly() {
 }
 
 export function clearSessionStorage() {
+  clearAuthTokens();
   localStorage.removeItem(DISPLAY_PROFILE_KEY);
   localStorage.removeItem(SESSION_USER_ID_KEY);
   localStorage.removeItem(SESSION_USERNAME_KEY);

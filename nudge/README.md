@@ -1,12 +1,12 @@
 # Nudge (frontend)
 
-Create React App UI for Nudge. The API uses **HTTP-only cookies** (`access_token`, `refresh_token`) plus optional **`Authorization: Bearer`** on the server.
+Create React App UI for Nudge. The API uses **HTTP-only cookies** (`access_token`, `refresh_token`) plus optional **`Authorization: Bearer`**. When login/register/refresh responses include **`access_token` / `refresh_token`** (or nested `tokens`), the client saves them in **`sessionStorage`** and sends **`Authorization: Bearer`** on API calls. On **`POST /auth/refresh`**, it tries **cookies first**, then **`{ "refresh_token": "..." }`** if the cookie refresh fails (helps mobile / cross-site).
 
 **Source of truth for auth behavior:** backend **`docs/AUTH.md`** (CORS + credentials, cookie domain, cold refresh, 401 → refresh → retry).
 
 ## Auth & routing
 
-- **`/app`** — Tasks + suggestions (protected). All API calls use **`withCredentials: true`** (`src/api/httpClient.js`).
+- **`/app`** — Tasks + suggestions (protected). All API calls use **`withCredentials: true`** + optional Bearer (`src/api/httpClient.js`, `src/auth/tokenStorage.js`).
 - **`/auth/login`** — `POST /auth/login` with `{ password, username | email }`.
 - **`/auth/signup`** — `POST /auth/register` with `{ username, email, password }` (min **8** chars; aligned with BE `RegisterRequest`).
 - **`/auth/magic`** — Placeholder until magic-link exists on the API.
