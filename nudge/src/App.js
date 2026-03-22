@@ -7,7 +7,10 @@ import "./App.css";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import MagicLinkPage from "./pages/MagicLinkPage";
-import NudgeAppPage from "./pages/NudgeAppPage";
+import AppLayout from "./layouts/AppLayout";
+import AccountPage from "./pages/AccountPage";
+import NudgeHomePage from "./pages/NudgeHomePage";
+import SettingsPage from "./pages/SettingsPage";
 
 function RootRedirect() {
   const { isAuthenticated, isRestoring } = useAuth();
@@ -51,10 +54,14 @@ function AppRoutes() {
         path="/app"
         element={
           <ProtectedRoute>
-            <NudgeAppPage />
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<NudgeHomePage />} />
+        <Route path="account" element={<AccountPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

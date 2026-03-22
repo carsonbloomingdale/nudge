@@ -1,40 +1,62 @@
 import styled from "styled-components";
 
-const TaskListDiv = styled.div`
-  position: absolute;
-  left: 0px;
-  top: 0px;
-  margin: 20px;
-  font-size: 17px;
-  display: flex;
-  flex-wrap: wrap;
-  opacity: 0.7;
-  width: 95vw;
-  max-height: 95vh;
-  overflow: hidden;
-  opacity: 0.5;
+const TaskGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
 `;
 
-const TaskDiv = styled.div`
-  background-color: white;
-  max-width: 300px;
-  margin-bottom: 20px;
-  margin-left: 20px;
-  margin-right: 20px;
-  border-radius: 5px;
-  color: #133926;
-  padding: 10px;
+const TaskCard = styled.div`
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  background: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  color: hsl(var(--foreground));
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  transition: box-shadow 300ms ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px hsl(var(--foreground) / 0.08);
+  }
 `;
 
-const TaskList = ({ taskList }) => {
+const EmptyState = styled.p`
+  margin: 0;
+  font-size: 15px;
+  color: hsl(var(--muted-foreground));
+`;
+
+export default function TaskList({ taskList }) {
+  if (!taskList?.length) {
+    return (
+      <EmptyState className="animate-fade-up stagger-0">
+        No activities yet. Log something you did today to build your feed.
+      </EmptyState>
+    );
+  }
+
   return (
-    <TaskListDiv>
-      {taskList &&
-        taskList.map((item, index) => (
-          <TaskDiv key={index}>{item.label}</TaskDiv>
-        ))}
-    </TaskListDiv>
+    <TaskGrid>
+      {taskList.map((item, index) => (
+        <TaskCard
+          key={`${item.label}-${index}`}
+          className="animate-fade-up"
+          style={{ animationDelay: `${index * 80}ms` }}
+        >
+          {item.label}
+        </TaskCard>
+      ))}
+    </TaskGrid>
   );
-};
-
-export default TaskList;
+}

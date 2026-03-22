@@ -5,9 +5,11 @@ const Wrap = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #133926;
-  font-family: "Varela Round", sans-serif;
-  font-size: 18px;
+  padding: 2rem 1rem;
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), sans-serif;
+  font-size: 15px;
+  background: hsl(var(--background));
 `;
 
 export default function SessionSpinner({ message = "Restoring session…" }) {
