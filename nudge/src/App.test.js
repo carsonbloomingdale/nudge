@@ -29,6 +29,7 @@ jest.mock("./api/authApi", () => ({
   ),
   logoutApi: jest.fn(() => Promise.resolve()),
   normalizeUserPayload: jest.fn(() => null),
+  mergeAuthMeData: jest.fn(() => null),
   login: jest.fn(),
   register: jest.fn(),
   patchCurrentUser: jest.fn(),

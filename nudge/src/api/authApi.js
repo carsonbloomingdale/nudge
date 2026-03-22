@@ -1,4 +1,6 @@
 import axios from "axios";
+import { readAccessToken } from "../auth/tokenStorage";
+import { API_BASE_URL } from "./apiConfig";
 import http from "./httpClient";
 import { refreshTokensRequest } from "./authRefresh";
 
@@ -88,9 +90,14 @@ export async function fetchCurrentUserResilient() {
       await new Promise((r) => setTimeout(r, backoffMs[i]));
     }
     try {
+      const headers = { Accept: "application/json" };
+      const bearer = readAccessToken();
+      if (bearer) {
+        headers.Authorization = `Bearer ${bearer}`;
+      }
       const { data } = await axios.get(`${API_BASE_URL}/auth/me`, {
         withCredentials: true,
-        headers: { Accept: "application/json" },
+        headers,
       });
       const user = normalizeUserPayload(data);
       return { user, error: null };
@@ -184,6 +191,61 @@ export function normalizeUserPayload(data) {
         ? String(u.timezone)
         : null,
     smsOptIn,
+    phoneVerified,
+    phoneVerifiedAt,
+  };
+}
+
+/**
+ * Merge AuthMe JSON into the current user. Supports full profiles and partial
+ * bodies (e.g. verify-code responses that only include `phone_verified` flags).
+ * @param {AuthUser | null | undefined} prev
+ * @param {unknown} data
+ * @returns {AuthUser | null}
+ */
+export function mergeAuthMeData(prev, data) {
+  const full = normalizeUserPayload(data);
+  if (full?.userId) {
+    if (prev?.userId && prev.userId !== full.userId) {
+      return full;
+    }
+    return prev?.userId === full.userId ? { ...prev, ...full } : full;
+  }
+  if (!prev?.userId) {
+    return null;
+  }
+  const u = data?.user ?? data?.person ?? data;
+  if (!u || typeof u !== "object") {
+    return null;
+  }
+  const rid = u.id ?? u.user_id ?? u.uuid ?? u.sub;
+  if (rid != null && String(rid) !== "" && String(rid) !== prev.userId) {
+    return null;
+  }
+  const hasPhonePatch =
+    "phone_verified" in u ||
+    "phoneVerified" in u ||
+    "phone_verified_at" in u ||
+    "phoneVerifiedAt" in u;
+  if (!hasPhonePatch) {
+    return null;
+  }
+  const pvAtRaw = u.phone_verified_at ?? u.phoneVerifiedAt;
+  const phoneVerifiedAt =
+    pvAtRaw != null && String(pvAtRaw).trim() !== ""
+      ? String(pvAtRaw).trim()
+      : prev.phoneVerifiedAt;
+  const pvFlag = u.phone_verified ?? u.phoneVerified;
+  let phoneVerified;
+  if (pvFlag === true || pvFlag === "true" || pvFlag === 1) {
+    phoneVerified = true;
+  } else if (pvFlag === false || pvFlag === "false" || pvFlag === 0) {
+    phoneVerified = false;
+  } else {
+    phoneVerified = Boolean(phoneVerifiedAt);
+  }
+  return {
+    ...prev,
     phoneVerified,
     phoneVerifiedAt,
   };
