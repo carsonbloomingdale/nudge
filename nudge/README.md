@@ -52,7 +52,11 @@ BE may set **`AUTH_COOKIE_DOMAIN`** (e.g. `.example.com`) so API + SPA subdomain
 | `POST` | `/auth/login` | Sets access + refresh cookies. |
 | `POST` | `/auth/logout` | Clears auth cookies (matching attributes). |
 | `POST` | `/auth/refresh` | Rotates tokens; used on cold load + axios 401 retry. |
-| `GET` | `/auth/me` | Session user: `{ id, user_id, sub, username, user_name, email, … }`. Valid JWT required (**401** / **503** per BE). |
+| `GET` | `/auth/me` | Session user: `{ id, user_id, sub, username, user_name, email, … }`. Includes **`sms_opt_in`**, **`phone` / `phone_e164`**, **`phone_verified`** (bool), **`phone_verified_at`** when the API exposes them. Valid JWT required (**401** / **503** per BE). |
+| `PATCH` | `/auth/me` | Profile update (JSON). FE sends `phone` + `phone_e164`, `sms_opt_in`, etc. Returns **AuthMeResponse**; server may clear verification when the number changes (**`phone_verified`** false, **`phone_verified_at`** null). |
+| `POST` | `/auth/me/phone/send-verification-code` | SMS verification: send code to saved number (empty body). Response: **AuthMeResponse**. |
+| `POST` | `/auth/me/phone/verify` | `{ "code": "123456" }` — response **AuthMeResponse** with **`phone_verified: true`** and **`phone_verified_at`** set when valid. |
+| `POST` | `/auth/me/sms/test` | One-off test SMS after SMS is on and the number is verified. |
 | `GET` | `/tasks`, `/tasks/` | Same handler; **JSON array** of tasks (`label`, `task_id`, `user_id`, …). |
 | `POST` | `/tasks/` | **`TaskCreateBody`** — **no `user_id`**; server sets user from JWT. |
 | `POST` | `/api/tasks/enrich` | Enrich task (OpenAI on server); response includes **`task`**. |
@@ -62,6 +66,8 @@ BE may set **`AUTH_COOKIE_DOMAIN`** (e.g. `.example.com`) so API + SPA subdomain
 | `GET` | `/user_by_id/:id` | Legacy; **404** if invalid. |
 
 Client sends `Content-Type: application/json` only — **no OpenAI key** in the browser.
+
+**SMS + toll-free verification (UI flow):** see **[`docs/frontend-sms-verification.md`](../docs/frontend-sms-verification.md)** — register/settings, send code, verify, then test SMS; Twilio toll-free approval is separate from in-app verification.
 
 ## Deploy (Heroku / Koyeb / production)
 

@@ -13,6 +13,7 @@ import NudgeHomePage from "./pages/NudgeHomePage";
 import SettingsPage from "./pages/SettingsPage";
 import InsightsPage from "./pages/InsightsPage";
 import GoalsPage from "./pages/GoalsPage";
+import TermsPage from "./pages/TermsPage";
 
 function RootRedirect() {
   const { isAuthenticated, isRestoring } = useAuth();
@@ -52,6 +53,7 @@ function AppRoutes() {
           </PublicAuthRoute>
         }
       />
+      <Route path="/terms" element={<TermsPage />} />
       <Route
         path="/app"
         element={

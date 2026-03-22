@@ -2,9 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { useAuth } from "../auth/AuthContext";
+import { AuthLegalNote } from "../components/auth/authStyles";
 import { fetchAuthenticatedTasks } from "../api/taskApi";
 import { useAppShell } from "../context/AppShellContext";
 import { displayUserAvatarLabel } from "../utils/userDisplay";
+import {
+  hasSavedSmsPhone,
+  isSmsFullyEnabled,
+  needsPhoneVerification,
+} from "../utils/smsVerification";
 
 const LG = "1024px";
 
@@ -295,8 +301,21 @@ export default function AccountPage() {
       </Row>
       <Row>
         <Label>SMS reminders</Label>
-        <Value>{user?.smsOptIn ? "On" : "Off"}</Value>
+        <Value>
+          {!user?.smsOptIn
+            ? "Off"
+            : isSmsFullyEnabled(user)
+              ? "On (verified)"
+              : needsPhoneVerification(user)
+                ? "On — verify in Settings"
+                : hasSavedSmsPhone(user)
+                  ? "On"
+                  : "On — add a number in Settings"}
+        </Value>
       </Row>
+      <AuthLegalNote style={{ maxWidth: "none", marginTop: "1.25rem" }}>
+        <Link to="/terms">Terms &amp; Conditions</Link>
+      </AuthLegalNote>
       <LogoutBtn type="button" onClick={handleLogout}>
         Log out
       </LogoutBtn>

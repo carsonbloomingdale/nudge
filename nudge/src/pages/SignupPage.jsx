@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { SessionVerificationError } from "../auth/sessionErrors";
 import { messageFromAuthError, register } from "../api/authApi";
 import AuthLoginPitch from "../components/auth/AuthLoginPitch";
 import TimeZoneInput from "../components/profile/TimeZoneInput";
@@ -48,6 +49,7 @@ export default function SignupPage() {
   const [phone, setPhone] = useState("");
   const [timezone, setTimezone] = useState(() => getBrowserTimeZone() ?? "");
   const [smsOptIn, setSmsOptIn] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -70,6 +72,10 @@ export default function SignupPage() {
       }
       if (password !== confirm) {
         setError("Passwords do not match.");
+        return;
+      }
+      if (!agreeTerms) {
+        setError("Agree to the Terms & Conditions to create an account.");
         return;
       }
       const phoneStripped = stripPhoneForSubmit(phone);
@@ -100,10 +106,22 @@ export default function SignupPage() {
           ...optional,
         });
         await establishSession(res);
-        const to = location.state?.from ?? "/app";
-        navigate(to, { replace: true });
+        const wantsSmsVerify = smsOptIn && isE164Phone(phone);
+        if (wantsSmsVerify) {
+          navigate("/app/settings", {
+            replace: true,
+            state: { verifySmsAfterSignup: true },
+          });
+        } else {
+          const to = location.state?.from ?? "/app";
+          navigate(to, { replace: true });
+        }
       } catch (err) {
-        setError(messageFromAuthError(err, { forRegister: true }));
+        if (err instanceof SessionVerificationError) {
+          setError(err.message);
+        } else {
+          setError(messageFromAuthError(err, { forRegister: true }));
+        }
       } finally {
         setLoading(false);
       }
@@ -118,6 +136,7 @@ export default function SignupPage() {
       phone,
       timezone,
       smsOptIn,
+      agreeTerms,
       establishSession,
       navigate,
       location,
@@ -172,6 +191,21 @@ export default function SignupPage() {
               autoComplete="new-password"
               placeholder="Confirm password"
             />
+            <StyledCheckboxRow>
+              <input
+                type="checkbox"
+                name="accept_terms"
+                checked={agreeTerms}
+                onChange={(ev) => setAgreeTerms(ev.target.checked)}
+                required
+              />
+              <span>
+                I agree to the{" "}
+                <Link to="/terms" onClick={(e) => e.stopPropagation()}>
+                  Terms &amp; Conditions
+                </Link>
+              </span>
+            </StyledCheckboxRow>
             <StyledOptionalHeading id="signup-optional-heading">
               Profile &amp; SMS (optional)
             </StyledOptionalHeading>
@@ -225,7 +259,9 @@ export default function SignupPage() {
                 text messages from Nudge about my account and tasks. Message
                 frequency varies. Message and data rates may apply. I can opt
                 out anytime in settings. Phone number is stored securely and
-                used only for these messages.
+                used only for these messages. After you create your account,
+                you will verify your number with a one-time code before SMS is
+                fully on.
               </span>
             </StyledCheckboxRow>
             <StyledAuthSubmitBtn type="submit" disabled={loading}>

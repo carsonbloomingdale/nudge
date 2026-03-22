@@ -97,6 +97,7 @@ export function buildRegisterOptionalPayload({
   }
   if (p) {
     payload.phone = p;
+    payload.phone_e164 = p;
   }
   if (tz) {
     payload.timezone = tz;
@@ -109,6 +110,7 @@ export function buildRegisterOptionalPayload({
 
 /**
  * PATCH /auth/me body (snake_case). Empty phone → null to clear on server.
+ * Sends `phone_e164` as well when the API stores the SMS destination separately from `phone`.
  */
 export function buildProfilePatchPayload({
   firstName,
@@ -126,6 +128,7 @@ export function buildProfilePatchPayload({
     first_name: fn || null,
     last_name: ln || null,
     phone: p ? p : null,
+    phone_e164: p ? p : null,
     timezone: tz || null,
     sms_opt_in: Boolean(smsOptIn),
   };
