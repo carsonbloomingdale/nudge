@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
+import JournalAttachmentPicker from "../journal/JournalAttachmentPicker";
 import { useAppShell } from "../../context/AppShellContext";
 
 const TRAITS = [
@@ -180,6 +181,7 @@ const TraitPill = styled.button`
 export default function MobileComposer() {
   const { composerOpen, closeComposer, submitJournalEntry } = useAppShell();
   const [text, setText] = useState("");
+  const [attachFiles, setAttachFiles] = useState([]);
   const [traitId, setTraitId] = useState(null);
   const [promptIx, setPromptIx] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -188,6 +190,7 @@ export default function MobileComposer() {
     if (composerOpen) {
       setPromptIx(Math.floor(Math.random() * PROMPTS.length));
       setTraitId(null);
+      setAttachFiles([]);
     }
   }, [composerOpen]);
 
@@ -215,6 +218,7 @@ export default function MobileComposer() {
 
   const handleClose = useCallback(() => {
     setText("");
+    setAttachFiles([]);
     closeComposer();
   }, [closeComposer]);
 
@@ -225,9 +229,12 @@ export default function MobileComposer() {
     }
     setSaving(true);
     try {
-      const ok = await submitJournalEntry(trimmed);
+      const opts =
+        attachFiles.length > 0 ? { files: attachFiles } : undefined;
+      const ok = await submitJournalEntry(trimmed, opts);
       if (ok) {
         setText("");
+        setAttachFiles([]);
         closeComposer();
       }
     } finally {
@@ -235,6 +242,7 @@ export default function MobileComposer() {
     }
   }, [
     text,
+    attachFiles,
     saving,
     submitJournalEntry,
     closeComposer,
@@ -262,6 +270,11 @@ export default function MobileComposer() {
           placeholder="Let the page hold whatever you want to remember…"
           autoComplete="off"
           aria-label="Journal entry"
+        />
+        <JournalAttachmentPicker
+          files={attachFiles}
+          onFilesChange={setAttachFiles}
+          tight
         />
       </Body>
       <TraitBar>

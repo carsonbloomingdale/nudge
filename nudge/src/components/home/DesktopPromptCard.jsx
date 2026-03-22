@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import JournalAttachmentPicker from "../journal/JournalAttachmentPicker";
 import Suggestion from "../Suggestion";
 import SuggestionLoading from "../SuggestionLoading";
 
@@ -150,6 +151,8 @@ export default function DesktopPromptCard({
   suggestion,
   setSuggestion,
   suggestionLoading,
+  attachmentFiles = [],
+  onAttachmentFilesChange,
 }) {
   return (
     <Card className="animate-fade-up stagger-200">
@@ -169,6 +172,12 @@ export default function DesktopPromptCard({
           aria-label="What you did today"
           rows={3}
         />
+        {typeof onAttachmentFilesChange === "function" ? (
+          <JournalAttachmentPicker
+            files={attachmentFiles}
+            onFilesChange={onAttachmentFilesChange}
+          />
+        ) : null}
         <Actions>
           <PrimaryBtn type="submit">Save reflection</PrimaryBtn>
           <SecondaryBtn

@@ -1,4 +1,9 @@
 import http from "./httpClient";
+import {
+  flattenJournalsToTasks,
+  isJournalRouteMissingError,
+  sortTasksChronologically,
+} from "./journalApi";
 
 /** Normalize list from GET /tasks (shape may vary). */
 export function mapTasksResponse(data) {
@@ -15,7 +20,20 @@ export function mapTasksResponse(data) {
   }));
 }
 
+/**
+ * Prefer GET /api/journals/ (nested tasks + journal_id); fallback to GET /tasks/.
+ * Tasks are sorted oldest → newest for enrich / suggestion history.
+ */
 export async function fetchAuthenticatedTasks() {
-  const { data } = await http.get("/tasks/");
-  return mapTasksResponse(data);
+  try {
+    const { data } = await http.get("/api/journals/");
+    const flat = sortTasksChronologically(flattenJournalsToTasks(data));
+    return mapTasksResponse(flat);
+  } catch (e) {
+    if (isJournalRouteMissingError(e)) {
+      const { data } = await http.get("/tasks/");
+      return mapTasksResponse(data);
+    }
+    throw e;
+  }
 }

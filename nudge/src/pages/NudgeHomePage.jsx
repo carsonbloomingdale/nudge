@@ -4,11 +4,17 @@ import styled from "styled-components";
 import { Link } from "react-router-dom";
 import fetchTaskData from "../api/fetchTaskData";
 import fetchSuggestion from "../api/fetchSuggestion";
+import {
+  fetchJournals,
+  normalizeJournalsListPayload,
+} from "../api/journalApi";
 import { fetchAuthenticatedTasks } from "../api/taskApi";
 import PullToRefresh from "../components/PullToRefresh";
 import WelcomeSection from "../components/home/WelcomeSection";
 import StatsRow from "../components/home/StatsRow";
-import ReflectionFeed from "../components/home/ReflectionFeed";
+import FeedModeToggle from "../components/home/FeedModeToggle";
+import InsightsTaskFeed from "../components/home/InsightsTaskFeed";
+import JournalFeed from "../components/home/JournalFeed";
 import DesktopPromptCard from "../components/home/DesktopPromptCard";
 import Suggestion from "../components/Suggestion";
 import SuggestionLoading from "../components/SuggestionLoading";
@@ -119,35 +125,43 @@ export default function NudgeHomePage() {
   } = useAppShell();
 
   const [didToday, setDidToday] = useState();
-  const [submittedDid, setSubmittedDid] = useState();
   const [suggestion, setSuggestion] = useState();
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const [taskList, setTaskList] = useState();
-  const [currentSubmitted, setCurrentSubmitted] = useState();
+  const [journalRecords, setJournalRecords] = useState([]);
+  const [feedMode, setFeedMode] = useState(
+    /** @type {"journals" | "insights"} */ ("journals"),
+  );
+  const [desktopAttachFiles, setDesktopAttachFiles] = useState([]);
   const [promptFieldKey, setPromptFieldKey] = useState(0);
   const [listRefreshing, setListRefreshing] = useState(false);
+
+  const reloadFeeds = useCallback(async () => {
+    refreshStreak();
+    const [tasksOutcome, journalsOutcome] = await Promise.allSettled([
+      fetchAuthenticatedTasks(),
+      fetchJournals(),
+    ]);
+    if (tasksOutcome.status === "fulfilled") {
+      setTaskList(tasksOutcome.value);
+    } else {
+      setTaskList([]);
+    }
+    if (journalsOutcome.status === "fulfilled") {
+      setJournalRecords(normalizeJournalsListPayload(journalsOutcome.value));
+    } else {
+      setJournalRecords([]);
+    }
+  }, [refreshStreak]);
 
   const refreshFromBackend = useCallback(async () => {
     setListRefreshing(true);
     try {
-      refreshStreak();
-      try {
-        const list = await fetchAuthenticatedTasks();
-        setTaskList(list);
-      } catch {
-        setTaskList([]);
-      }
+      await reloadFeeds();
     } finally {
       setListRefreshing(false);
     }
-  }, [refreshStreak]);
-
-  useEffect(() => {
-    if (submittedDid && taskList && currentSubmitted !== submittedDid) {
-      setTaskList([...taskList, { label: submittedDid }]);
-      setCurrentSubmitted(submittedDid);
-    }
-  }, [submittedDid, taskList, currentSubmitted]);
+  }, [reloadFeeds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,6 +177,16 @@ export default function NudgeHomePage() {
           setTaskList([]);
         }
       }
+      try {
+        const raw = await fetchJournals();
+        if (!cancelled) {
+          setJournalRecords(normalizeJournalsListPayload(raw));
+        }
+      } catch {
+        if (!cancelled) {
+          setJournalRecords([]);
+        }
+      }
     })();
     return () => {
       cancelled = true;
@@ -170,16 +194,20 @@ export default function NudgeHomePage() {
   }, [refreshStreak]);
 
   const submitEntry = useCallback(
-    async (rawText) => {
+    async (rawText, options) => {
       const trimmed = (rawText ?? "").trim();
       if (!trimmed) {
         return;
       }
-      setSubmittedDid(trimmed);
-      await fetchTaskData(trimmed, taskList);
+      await fetchTaskData(trimmed, taskList, options);
       recordStreakOnSubmit();
+      try {
+        await reloadFeeds();
+      } catch {
+        setTaskList((prev) => [...(prev ?? []), { label: trimmed }]);
+      }
     },
-    [taskList, recordStreakOnSubmit],
+    [taskList, recordStreakOnSubmit, reloadFeeds],
   );
 
   useEffect(() => {
@@ -193,13 +221,20 @@ export default function NudgeHomePage() {
       if (!trimmed) {
         return;
       }
-      setSubmittedDid(trimmed);
-      await fetchTaskData(trimmed, taskList);
+      await fetchTaskData(trimmed, taskList, {
+        files: desktopAttachFiles,
+      });
       recordStreakOnSubmit();
+      try {
+        await reloadFeeds();
+      } catch {
+        setTaskList((prev) => [...(prev ?? []), { label: trimmed }]);
+      }
+      setDesktopAttachFiles([]);
       setDidToday();
       setPromptFieldKey((k) => k + 1);
     },
-    [didToday, taskList, recordStreakOnSubmit],
+    [didToday, taskList, desktopAttachFiles, recordStreakOnSubmit, reloadFeeds],
   );
 
   const handleGetSuggestion = useCallback(async () => {
@@ -273,7 +308,20 @@ export default function NudgeHomePage() {
             />
           )}
         </MobileSuggestCard>
-        <ReflectionFeed taskList={taskList} title="Recent reflections" />
+        <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
+        {feedMode === "journals" ? (
+          <JournalFeed
+            journals={journalRecords}
+            onRefresh={refreshFromBackend}
+            title="Your log"
+          />
+        ) : (
+          <InsightsTaskFeed
+            tasks={taskList}
+            journals={journalRecords}
+            title="AI insights"
+          />
+        )}
       </MobileStack>
 
       <DesktopMain>
@@ -286,8 +334,23 @@ export default function NudgeHomePage() {
             suggestion={suggestion}
             setSuggestion={setSuggestion}
             suggestionLoading={suggestionLoading}
+            attachmentFiles={desktopAttachFiles}
+            onAttachmentFilesChange={setDesktopAttachFiles}
           />
-          <ReflectionFeed taskList={taskList} title="Recent reflections" />
+          <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
+          {feedMode === "journals" ? (
+            <JournalFeed
+              journals={journalRecords}
+              onRefresh={refreshFromBackend}
+              title="Your log"
+            />
+          ) : (
+            <InsightsTaskFeed
+              tasks={taskList}
+              journals={journalRecords}
+              title="AI insights"
+            />
+          )}
         </DesktopLeft>
         <DesktopRight>
           <IdentityRadar />

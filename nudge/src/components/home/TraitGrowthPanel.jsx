@@ -1,9 +1,19 @@
 import styled from "styled-components";
+import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
 
 const Wrap = styled.section``;
 
+const TitleRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+`;
+
 const Title = styled.h2`
-  margin: 0 0 1rem;
+  margin: 0;
   font-family: var(--font-display), serif;
   font-size: 1.25rem;
   font-weight: 400;
@@ -81,7 +91,10 @@ const ROWS = [
 export default function TraitGrowthPanel() {
   return (
     <Wrap className="animate-fade-up stagger-350">
-      <Title>Trait growth</Title>
+      <TitleRow>
+        <Title>Trait growth</Title>
+        <FeaturePreviewBadge compact />
+      </TitleRow>
       <Card>
         <Stack>
           {ROWS.map((r) => (

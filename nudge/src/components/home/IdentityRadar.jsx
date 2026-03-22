@@ -1,10 +1,20 @@
 import styled from "styled-components";
+import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
 import { TRAIT_DEFS } from "./traitUtils";
 
 const Wrap = styled.section``;
 
+const TitleRow = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+`;
+
 const Title = styled.h2`
-  margin: 0 0 1rem;
+  margin: 0;
   font-family: var(--font-display), serif;
   font-size: 1.25rem;
   font-weight: 400;
@@ -84,7 +94,10 @@ export default function IdentityRadar() {
 
   return (
     <Wrap className="animate-fade-up stagger-300">
-      <Title>Your identity map</Title>
+      <TitleRow>
+        <Title>Your identity map</Title>
+        <FeaturePreviewBadge compact />
+      </TitleRow>
       <Card>
         <ChartWrap>
           <svg

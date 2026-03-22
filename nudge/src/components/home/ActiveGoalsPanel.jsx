@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { GOALS } from "../books/GoalsContent";
+import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
 
 const Wrap = styled.section``;
 
@@ -14,8 +15,17 @@ const Card = styled.div`
 const HeadRow = styled.div`
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+`;
+
+const HeadLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 `;
 
 const Title = styled.h2`
@@ -123,8 +133,11 @@ export default function ActiveGoalsPanel() {
     <Wrap className="animate-fade-up stagger-400">
       <Card>
         <HeadRow>
-          <TargetIcon />
-          <Title>Active goals</Title>
+          <HeadLeft>
+            <TargetIcon />
+            <Title>Active goals</Title>
+          </HeadLeft>
+          <FeaturePreviewBadge compact />
         </HeadRow>
         <List>
           {PREVIEW.map((text, i) => (
