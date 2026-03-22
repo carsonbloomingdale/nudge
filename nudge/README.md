@@ -33,7 +33,7 @@ Create React App UI for Nudge. The API uses **HTTP-only cookies** (`access_token
    REACT_APP_USE_SAME_ORIGIN_API=true
    ```
    (Leave `REACT_APP_API_BASE_URL` unset or ignore it while this is on.)
-3. Restart **`npm start`**. The browser only talks to `localhost:3000`; the dev server proxies `/auth/*`, `/tasks/`, etc. to the API.
+3. Restart **`npm run dev`**. The browser only talks to `localhost:3000`; the dev server proxies `/auth/*`, `/tasks/`, etc. to the API.
 
 **Option B — fix CORS on the API** (needed for production / direct API URL anyway):
 
@@ -63,19 +63,19 @@ BE may set **`AUTH_COOKIE_DOMAIN`** (e.g. `.example.com`) so API + SPA subdomain
 
 Client sends `Content-Type: application/json` only — **no OpenAI key** in the browser.
 
-## Deploy (Koyeb / production)
+## Deploy (Heroku / Koyeb / production)
 
-**Do not run `npm start` in production.** That starts webpack-dev-server and causes **Invalid Host header** for custom domains (`nudgeweb.app`).
+**`npm start` serves the production `build/` folder** (static `serve`), not webpack-dev-server — safe for **`nudgeweb.app`** and custom domains.
 
-Use a **production build** + static file server:
+**Local coding** uses **`npm run dev`** (CRA dev server on port 3000).
 
 | | |
 |--|--|
 | **Root directory** | `nudge` (if repo root is the monorepo) |
-| **Build command** | `npm ci && npm run build` |
-| **Run command** | `npm run start:prod` |
+| **Build command** | `npm ci && npm run build` (Heroku also runs **`heroku-postbuild`** → `build` after install) |
+| **Run command** | **`npm start`** (default on Heroku; serves `build/` on **`PORT`**) |
 
-Koyeb sets **`PORT`**; `start:prod` serves the **`build/`** folder on `0.0.0.0`. Set **`REACT_APP_*`** vars in the service **environment** before/during build.
+Set **`REACT_APP_*`** in the platform **environment** so **`npm run build`** bakes the right API URL into the bundle.
 
 ## Environment variables
 
@@ -96,9 +96,13 @@ Backend-only template (separate repo): **`docs/backend.env.example`** at repo ro
 
 ## Available Scripts
 
+### `npm run dev`
+
+Runs the **development** server (hot reload). Open [http://localhost:3000](http://localhost:3000). Use this on your machine only.
+
 ### `npm start`
 
-Runs the app in development. Open [http://localhost:3000](http://localhost:3000) (or your chosen **`PORT`** from `.env.local`). The page reloads on file changes.
+Serves the **production** **`build/`** folder with **`serve`** (binds **`0.0.0.0:$PORT`**). Used by **Heroku** and can be used by **Koyeb** as the run command. Run **`npm run build`** first (or deploy with a build step / **`heroku-postbuild`**).
 
 ### `npm test`
 
