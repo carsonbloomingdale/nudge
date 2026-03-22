@@ -8,16 +8,18 @@ import {
 } from "react";
 import {
   fetchCurrentUser,
+  fetchCurrentUserResilient,
   logoutApi,
   normalizeUserPayload,
   refreshSession,
 } from "../api/authApi";
+import { setSessionExpiredHandler } from "./authSessionBridge";
 import {
-  clearDisplayProfileOnly,
   clearSessionStorage,
   readDisplayProfile,
   writeDisplayProfile,
 } from "./sessionKeys";
+import { SessionVerificationError } from "./sessionErrors";
 import { mergeTokensFromResponse } from "./tokenStorage";
 
 /** @typedef {import("../api/authApi").AuthUser} AuthUser */
@@ -30,7 +32,25 @@ export function AuthProvider({ children }) {
   const [status, setStatus] = useState("restoring");
   const [user, setUser] = useState(null);
 
-  /** Cold load: refresh cookies, then load profile (optional GET /auth/me) or display cache. */
+  const logout = useCallback(async () => {
+    try {
+      await logoutApi();
+    } catch {
+      /* still clear local state */
+    }
+    clearSessionStorage();
+    setUser(null);
+    setStatus("unauthenticated");
+  }, []);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      void logout();
+    });
+    return () => setSessionExpiredHandler(null);
+  }, [logout]);
+
+  /** Cold load: refresh cookies, then GET /auth/me. Stale display cache is not a substitute for a valid session. */
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -40,30 +60,29 @@ export function AuthProvider({ children }) {
         if (cancelled) {
           return;
         }
-        let nextUser = null;
-        try {
-          nextUser = await fetchCurrentUser();
-        } catch {
-          nextUser = null;
+        const { user: verifiedUser, error: meErr } =
+          await fetchCurrentUserResilient();
+        const meRejected = Boolean(meErr);
+        if (cancelled) {
+          return;
         }
-        if (!nextUser) {
-          nextUser = readDisplayProfile();
+        if (verifiedUser) {
+          writeDisplayProfile(verifiedUser);
+          setUser(verifiedUser);
+          setStatus("authenticated");
+          return;
         }
-        const resolved = nextUser ?? {
-          userId: "",
-          username: null,
-          email: null,
-          firstName: null,
-          lastName: null,
-          phone: null,
-          timezone: null,
-          smsOptIn: false,
-        };
-        setUser(resolved);
-        if (nextUser) {
-          writeDisplayProfile(nextUser);
+        if (!meRejected) {
+          const cached = readDisplayProfile();
+          if (cached) {
+            setUser(cached);
+            setStatus("authenticated");
+            return;
+          }
         }
-        setStatus("authenticated");
+        clearSessionStorage();
+        setUser(null);
+        setStatus("unauthenticated");
       } catch {
         if (!cancelled) {
           clearSessionStorage();
@@ -85,55 +104,44 @@ export function AuthProvider({ children }) {
     if (axiosResponse?.data) {
       mergeTokensFromResponse(axiosResponse.data);
     }
-    let nextUser = axiosResponse
+    const fromResponse = axiosResponse
       ? normalizeUserPayload(axiosResponse.data)
       : null;
-    if (!nextUser) {
-      try {
-        nextUser = await fetchCurrentUser();
-      } catch {
-        nextUser = null;
-      }
-    } else {
-      // Login/register bodies are often minimal; GET /auth/me is the canonical profile.
-      try {
-        const fromMe = await fetchCurrentUser();
-        if (fromMe) {
-          nextUser = fromMe;
-        }
-      } catch {
-        /* keep user from response */
-      }
-    }
-    if (!nextUser) {
-      clearDisplayProfileOnly();
-    }
-    const resolved = nextUser ?? {
-      userId: "",
-      username: null,
-      email: null,
-      firstName: null,
-      lastName: null,
-      phone: null,
-      timezone: null,
-      smsOptIn: false,
-    };
-    setUser(resolved);
-    if (nextUser) {
-      writeDisplayProfile(nextUser);
-    }
-    setStatus("authenticated");
-  }, []);
 
-  const logout = useCallback(async () => {
-    try {
-      await logoutApi();
-    } catch {
-      /* still clear local state */
+    const { user: fromMe, error: meError } =
+      await fetchCurrentUserResilient();
+
+    const nextUser = fromMe ?? (!meError ? fromResponse : null);
+
+    if (meError) {
+      clearSessionStorage();
+      setUser(null);
+      setStatus("unauthenticated");
+      const status =
+        meError &&
+        typeof meError === "object" &&
+        meError.isAxiosError === true
+          ? meError.response?.status
+          : undefined;
+      const msg =
+        status === 401 || status === 403
+          ? "Could not confirm your sign-in. On mobile, auth cookies often fail when the API is on another domain—the server needs SameSite=None (Secure) cookies and your exact site URL in CORS. You can also try again in a few seconds."
+          : "Could not verify your session. Check your connection and try again.";
+      throw new SessionVerificationError(msg);
     }
-    clearSessionStorage();
-    setUser(null);
-    setStatus("unauthenticated");
+
+    if (!nextUser?.userId) {
+      clearSessionStorage();
+      setUser(null);
+      setStatus("unauthenticated");
+      throw new SessionVerificationError(
+        "Signed in, but your profile could not be loaded. Try again.",
+      );
+    }
+
+    setUser(nextUser);
+    writeDisplayProfile(nextUser);
+    setStatus("authenticated");
   }, []);
 
   /** Refetch profile from GET /auth/me and update state + display cache. */

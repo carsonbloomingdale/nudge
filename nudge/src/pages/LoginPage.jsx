@@ -5,8 +5,8 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import axios from "axios";
 import { useAuth } from "../auth/AuthContext";
+import { SessionVerificationError } from "../auth/sessionErrors";
 import { login } from "../api/authApi";
 import AuthLoginPitch from "../components/auth/AuthLoginPitch";
 import {
@@ -57,9 +57,21 @@ export default function LoginPage() {
         const to = location.state?.from ?? "/app";
         navigate(to, { replace: true });
       } catch (err) {
-        if (axios.isAxiosError(err) && err.response?.status === 401) {
+        if (err instanceof SessionVerificationError) {
+          setError(err.message);
+        } else if (
+          err &&
+          typeof err === "object" &&
+          err.isAxiosError === true &&
+          err.response?.status === 401
+        ) {
           setError("Invalid username/email or password.");
-        } else if (axios.isAxiosError(err) && err.response?.status === 503) {
+        } else if (
+          err &&
+          typeof err === "object" &&
+          err.isAxiosError === true &&
+          err.response?.status === 503
+        ) {
           setError("Sign-in is temporarily unavailable. Try again later.");
         } else {
           setError("Could not sign in. Check your connection and try again.");

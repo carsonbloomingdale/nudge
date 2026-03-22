@@ -46,6 +46,49 @@ export async function fetchCurrentUser() {
 }
 
 /**
+ * GET /auth/me with backoff when the server returns 401/403. Mobile Safari (and some
+ * WebViews) can apply Set-Cookie from the login response slightly after the JS stack
+ * continues, so the first /auth/me may not send cookies yet.
+ *
+ * Uses plain `axios` (not the shared `http` client) so a transient 401 does not run the
+ * 401 interceptor: that path calls `POST /auth/refresh` and, if that fails, forces
+ * logout—which would clear a brand-new session right after login.
+ */
+export async function fetchCurrentUserResilient() {
+  const backoffMs = [0, 120, 300, 600];
+  let lastError = null;
+  for (let i = 0; i < backoffMs.length; i += 1) {
+    if (backoffMs[i] > 0) {
+      await new Promise((r) => setTimeout(r, backoffMs[i]));
+    }
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/auth/me`, {
+        withCredentials: true,
+        headers: { Accept: "application/json" },
+      });
+      const user = normalizeUserPayload(data);
+      return { user, error: null };
+    } catch (e) {
+      if (
+        axios.isAxiosError(e) &&
+        (e.response?.status === 404 || e.response?.status === 503)
+      ) {
+        return { user: null, error: null };
+      }
+      lastError = e;
+      const status =
+        e && typeof e === "object" && e.isAxiosError === true
+          ? e.response?.status
+          : undefined;
+      if (status !== 401 && status !== 403) {
+        return { user: null, error: e };
+      }
+    }
+  }
+  return { user: null, error: lastError };
+}
+
+/**
  * @typedef {{
  *   userId: string,
  *   username: string | null,

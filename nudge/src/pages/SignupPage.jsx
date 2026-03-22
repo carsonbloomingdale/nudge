@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { SessionVerificationError } from "../auth/sessionErrors";
 import { messageFromAuthError, register } from "../api/authApi";
 import AuthLoginPitch from "../components/auth/AuthLoginPitch";
 import TimeZoneInput from "../components/profile/TimeZoneInput";
@@ -103,7 +104,11 @@ export default function SignupPage() {
         const to = location.state?.from ?? "/app";
         navigate(to, { replace: true });
       } catch (err) {
-        setError(messageFromAuthError(err, { forRegister: true }));
+        if (err instanceof SessionVerificationError) {
+          setError(err.message);
+        } else {
+          setError(messageFromAuthError(err, { forRegister: true }));
+        }
       } finally {
         setLoading(false);
       }

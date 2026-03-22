@@ -1,4 +1,5 @@
 import axios from "axios";
+import { notifySessionExpired } from "../auth/authSessionBridge";
 import { API_BASE_URL } from "./apiConfig";
 import { readAccessToken } from "../auth/tokenStorage";
 import { refreshTokensRequest } from "./authRefresh";
@@ -48,6 +49,9 @@ http.interceptors.response.use(
       return Promise.reject(error);
     }
     if (cfg._retriedAfterRefresh) {
+      if (error.response?.status === 401) {
+        notifySessionExpired();
+      }
       return Promise.reject(error);
     }
     const url = cfg.url ?? "";
@@ -68,6 +72,7 @@ http.interceptors.response.use(
       await refreshPromise;
       return http(cfg);
     } catch (refreshErr) {
+      notifySessionExpired();
       return Promise.reject(refreshErr);
     }
   },
