@@ -1,5 +1,8 @@
 import axios from "axios";
-import { readAccessToken } from "../auth/tokenStorage";
+import {
+  readAccessToken,
+  syncCookieTokensToSessionStorage,
+} from "../auth/tokenStorage";
 import { API_BASE_URL } from "./apiConfig";
 import http from "./httpClient";
 import { refreshTokensRequest } from "./authRefresh";
@@ -90,6 +93,7 @@ export async function fetchCurrentUserResilient() {
       await new Promise((r) => setTimeout(r, backoffMs[i]));
     }
     try {
+      syncCookieTokensToSessionStorage();
       const headers = { Accept: "application/json" };
       const bearer = readAccessToken();
       if (bearer) {

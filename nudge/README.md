@@ -1,8 +1,8 @@
 # Nudge (frontend)
 
-Create React App UI for Nudge. The API uses **HTTP-only cookies** (`access_token`, `refresh_token`) plus optional **`Authorization: Bearer`**. When login/register/refresh responses include **`access_token` / `refresh_token`** (or nested `tokens`), the client saves them in **`sessionStorage`** and sends **`Authorization: Bearer`** on API calls. On **`POST /auth/refresh`**, it tries **cookies first**, then **`{ "refresh_token": "..." }`** if the cookie refresh fails (helps mobile / cross-site).
+Create React App UI for Nudge. The API may use **HTTP-only cookies** (`access_token`, `refresh_token`). For reliable SPA auth (cross-origin, Safari, Bearer-only APIs), **`POST /auth/login`**, **`POST /auth/register`**, and **`POST /auth/refresh`** should **also** return **`access_token` and `refresh_token` in the JSON body**; the client saves them in **`sessionStorage`** (`nudge_access_token` / `nudge_refresh_token`) and sends **`Authorization: Bearer`** on API calls. Cookies alone are optional for authorization once JSON tokens are present. On **`POST /auth/refresh`**, the client tries **cookies first**, then **`{ "refresh_token": "..." }`** if the cookie refresh fails.
 
-**Source of truth for auth behavior:** backend **`docs/AUTH.md`** (CORS + credentials, cookie domain, cold refresh, 401 → refresh → retry).
+**Backend JSON contract (recommended fields):** see **`docs/backend-auth-json.md`** in this repo.
 
 ## Auth & routing
 

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { notifySessionExpired } from "../auth/authSessionBridge";
 import { API_BASE_URL } from "./apiConfig";
-import { readAccessToken } from "../auth/tokenStorage";
+import { readAccessToken, syncCookieTokensToSessionStorage } from "../auth/tokenStorage";
 import { refreshTokensRequest } from "./authRefresh";
 
 /**
@@ -19,6 +19,7 @@ const http = axios.create({
 let refreshPromise = null;
 
 http.interceptors.request.use((config) => {
+  syncCookieTokensToSessionStorage();
   const url = String(config.url ?? "");
   const skipBearer =
     url.includes("/auth/login") ||
