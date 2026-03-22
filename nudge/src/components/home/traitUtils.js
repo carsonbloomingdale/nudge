@@ -49,10 +49,11 @@ export function traitForEntry(label, index = 0) {
 
 /**
  * Traits from the API when present; otherwise one derived trait from the label
- * so charts aren’t empty until the backend sends `personality_traits` on each task.
+ * (same idea as reflection badges) so charts aren’t empty until the backend sends
+ * `personality_traits` on each task.
  *
  * @param {unknown} task
- * @param {number} [listIndex]
+ * @param {number} [listIndex] — index in the fetched list when `task_id` is missing
  * @returns {string[]}
  */
 export function extractPersonalityTraits(task, listIndex = 0) {
