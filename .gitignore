@@ -4,7 +4,6 @@
 /node_modules
 /nudge/node_modules
 /nudge/.env
-/build
 /.pnp
 .pnp.js
 
@@ -13,6 +12,7 @@
 
 # production
 /build
+nudge/build
 
 # misc
 .DS_Store

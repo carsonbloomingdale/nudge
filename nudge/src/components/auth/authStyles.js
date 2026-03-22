@@ -1,71 +1,83 @@
 import styled from "styled-components";
 
-export const StyledHeader = styled.div`
-  font-size: 24px;
-  margin: 20px;
-  z-index: 2;
-  color: #133926;
-  font-weight: bold;
+export const StyledHeader = styled.h1`
+  margin: 0 0 0.5rem;
+  text-align: center;
 `;
 
 export const StyledInput = styled.input`
-  max-width: 60vw;
-  height: 30px;
-  border-radius: 15px;
-  font-size: 14px;
-  border: none;
-  margin: 10px;
-  font-size: 16px;
+  width: 100%;
+  max-width: 100%;
+  height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-family: var(--font-sans), sans-serif;
+  border: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--background) / 0.6);
+  color: hsl(var(--foreground));
 
-  font-family: "Varela Round", sans-serif;
-  font-weight: 400;
-  font-style: normal;
+  &::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.3);
+    border-color: hsl(var(--primary) / 0.35);
+  }
 `;
 
 export const StyledSubmitBtn = styled.button`
-  background-color: #133926;
+  background: hsl(var(--primary));
   color: white;
   border: none;
   width: 60px;
-  height: 30px;
-  border-radius: 15px;
-  transition: all 1s ease-out;
-
-  font-family: "Varela Round", sans-serif;
-  font-weight: 400;
-  font-style: normal;
+  height: 2.25rem;
+  border-radius: var(--radius);
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px hsl(var(--primary) / 0.2);
+  transition: box-shadow 200ms ease, transform 200ms ease;
 
   &:hover {
-    background-color: #1f4f37;
+    box-shadow: 0 6px 20px hsl(var(--primary) / 0.25);
     cursor: pointer;
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 
   &:disabled {
     opacity: 0.65;
     cursor: not-allowed;
+    transform: none;
   }
 `;
 
 export const StyledAuthSubmitBtn = styled(StyledSubmitBtn)`
   width: auto;
   min-width: 120px;
-  padding: 0 16px;
+  height: 2.75rem;
+  padding: 0 1.25rem;
 `;
 
 export const StyledForm = styled.form`
-  padding-bottom: 40px;
+  padding-bottom: 0;
   z-index: 2;
   display: flex;
   align-items: center;
 `;
 
-/** Stacked fields (login / signup) */
 export const StyledColumnForm = styled(StyledForm)`
   flex-direction: column;
   align-items: stretch;
   width: 100%;
   max-width: 320px;
-  gap: 4px;
+  gap: 0.75rem;
   padding-bottom: 12px;
 `;
 
@@ -73,61 +85,61 @@ export const StyledMain = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: hsla(120, 100%, 100%, 0.5);
-  padding: 40px;
-  border-radius: 15px;
-  z-index: 20000;
-
-  @media (max-width: 750px) {
-    margin: 20px;
-    background-color: #74aa8de8;
-  }
-
-  @media (max-height: 750px) and (min-width: 800px) {
-    margin: 20px;
-    background-color: #74aa8de8;
-  }
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  background: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 `;
 
 export const StyledMuted = styled.p`
-  margin: 0 20px 16px;
-  max-width: 70vw;
+  margin: 0 0 1rem;
+  max-width: 100%;
   text-align: center;
-  color: #133926;
-  opacity: 0.85;
-  line-height: 1.4;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.625;
   font-size: 15px;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
 `;
 
 export const StyledError = styled.p`
-  margin: 0 20px 12px;
-  max-width: 70vw;
+  margin: 0 0 0.75rem;
+  max-width: 100%;
   text-align: center;
-  color: #8b2c2c;
+  color: hsl(0 45% 40%);
   font-size: 14px;
+  overflow-wrap: break-word;
 `;
 
 export const StyledSecondaryBtn = styled.button`
   background: transparent;
-  color: #133926;
-  border: 1px solid #133926;
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border) / 0.5);
   width: fit-content;
-  padding: 8px 20px;
-  height: auto;
-  min-height: 36px;
+  padding: 0.5rem 1.25rem;
+  min-height: 2.5rem;
   font-size: 15px;
-  border-radius: 15px;
+  border-radius: var(--radius);
   margin-top: 8px;
   cursor: pointer;
-  font-family: "Varela Round", sans-serif;
+  font-family: var(--font-sans), sans-serif;
+  transition: box-shadow 300ms ease, transform 200ms ease;
 
   &:hover {
-    background: hsla(150, 30%, 95%, 0.9);
+    box-shadow: 0 4px 14px hsl(var(--foreground) / 0.08);
+  }
+
+  &:active {
+    transform: scale(0.97);
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
   }
 `;
 
@@ -135,12 +147,17 @@ export const AuthLinks = styled.nav`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
   font-size: 14px;
 
   a {
-    color: #133926;
+    color: hsl(var(--primary));
     text-decoration: underline;
+    text-underline-offset: 3px;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
   }
 `;

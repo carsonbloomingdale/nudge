@@ -1,67 +1,99 @@
 import styled from "styled-components";
 
-const StyledDiv = styled.div`
-  background-color: white;
-  border-radius: 5px;
-  width: 60%;
-  max-width: 750px;
-  color: #133926;
-  font-size: 20px;
-  position: absolute;
-  bottom: 90px;
-  padding: 10px;
-  margin: 10px;
+const Panel = styled.div`
+  margin-top: 1.25rem;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  background: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  color: hsl(var(--foreground));
+  font-size: 15px;
+  line-height: 1.625;
+  overflow-wrap: break-word;
+  transition: box-shadow 300ms ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px hsl(var(--foreground) / 0.08);
+  }
+`;
+
+const HeaderRow = styled.div`
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+`;
 
-  @media (max-width: 750px) {
-    bottom: 180px;
+const CloseBtn = styled.button`
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0.25rem;
+  margin: -0.25rem -0.25rem 0 0;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 200ms ease, transform 200ms ease;
+
+  &:hover {
+    color: hsl(var(--foreground));
   }
 
-  @media (max-width: 480px) {
-    width: 80%;
-    bottom: 5px;
-  }
-
-  @media (max-height: 750px) and (min-width: 800px) {
-    right: 10px;
-    max-width: 40%;
-    bottom: auto;
-    margin-top: -40px;
+  &:active {
+    transform: scale(0.97);
   }
 `;
 
-const StyledButton = styled.div`
-    float: right;
-    transition: all 0.3s ease-out;
-    font-size: 25px;
-    margin: bottom: 10px;
-
-    &:hover{
-        color: #2e6046;
-        cursor: pointer;
-    }
+const SuggestionTitle = styled.h3`
+  margin: 0;
 `;
 
-const Suggestion = ({ suggestion, setSuggestion, context }) => {
+const Block = styled.div`
+  margin-top: 0.75rem;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+`;
+
+const Strong = styled.span`
+  font-weight: 600;
+  color: hsl(var(--foreground));
+`;
+
+export default function Suggestion({
+  suggestion,
+  setSuggestion,
+  context,
+  className,
+}) {
   if (!suggestion) {
-    return;
+    return null;
   }
 
   return (
-    <StyledDiv>
-      <div>
-        <StyledButton onClick={() => setSuggestion()}>
-          <b>X</b>
-        </StyledButton>
-      </div>
-      <div>
-        <b>Suggestion:</b> {suggestion}
-        <br />
-        <b>Why?</b> {context}
-      </div>
-    </StyledDiv>
+    <Panel className={className}>
+      <HeaderRow>
+        <SuggestionTitle>Suggestion</SuggestionTitle>
+        <CloseBtn
+          type="button"
+          onClick={() => setSuggestion()}
+          aria-label="Dismiss suggestion"
+        >
+          ×
+        </CloseBtn>
+      </HeaderRow>
+      <Block>{suggestion}</Block>
+      {context ? (
+        <Block>
+          <Strong>Why? </Strong>
+          {context}
+        </Block>
+      ) : null}
+    </Panel>
   );
-};
-
-export default Suggestion;
+}
