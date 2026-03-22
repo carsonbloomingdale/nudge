@@ -10,6 +10,8 @@ import WelcomeSection from "../components/home/WelcomeSection";
 import StatsRow from "../components/home/StatsRow";
 import ReflectionFeed from "../components/home/ReflectionFeed";
 import DesktopPromptCard from "../components/home/DesktopPromptCard";
+import Suggestion from "../components/Suggestion";
+import SuggestionLoading from "../components/SuggestionLoading";
 import IdentityRadar from "../components/home/IdentityRadar";
 import TraitGrowthPanel from "../components/home/TraitGrowthPanel";
 import ActiveGoalsPanel from "../components/home/ActiveGoalsPanel";
@@ -61,6 +63,51 @@ const InlineLink = styled(Link)`
   color: hsl(var(--primary));
   font-weight: 600;
   text-underline-offset: 3px;
+`;
+
+const MobileSuggestCard = styled.section`
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  background: hsl(var(--primary) / 0.06);
+`;
+
+const MobileSuggestLead = styled.p`
+  margin: 0 0 0.85rem;
+  font-size: 15px;
+  line-height: 1.55;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+`;
+
+const MobileSuggestBtn = styled.button`
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 1.25rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.5rem;
+  font-size: 15px;
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  background: hsl(var(--card) / 0.9);
+  color: hsl(var(--foreground));
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  transition: box-shadow 300ms ease, transform 200ms ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px hsl(var(--foreground) / 0.08);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+  }
 `;
 
 export default function NudgeHomePage() {
@@ -203,6 +250,29 @@ export default function NudgeHomePage() {
           <InlineLink to="/app/insights">Insights</InlineLink> and{" "}
           <InlineLink to="/app/goals">Goals</InlineLink> from the tabs.
         </MobileWriteHint>
+        <MobileSuggestCard className="animate-fade-up stagger-150">
+          <MobileSuggestLead>
+            Stuck? Ask for a gentle nudge based on what you&apos;ve logged
+            lately.
+          </MobileSuggestLead>
+          <MobileSuggestBtn
+            type="button"
+            onClick={handleGetSuggestion}
+            disabled={suggestionLoading}
+          >
+            {suggestionLoading ? "Thinking…" : "What should I do?"}
+          </MobileSuggestBtn>
+          {suggestionLoading ? (
+            <SuggestionLoading />
+          ) : (
+            <Suggestion
+              setSuggestion={setSuggestion}
+              suggestion={suggestion?.reccomendedTask}
+              context={suggestion?.context}
+              className="animate-fade-up stagger-100"
+            />
+          )}
+        </MobileSuggestCard>
         <ReflectionFeed taskList={taskList} title="Recent reflections" />
       </MobileStack>
 
