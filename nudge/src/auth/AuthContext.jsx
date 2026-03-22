@@ -19,9 +19,7 @@ import {
   writeDisplayProfile,
 } from "./sessionKeys";
 
-/**
- * @typedef {{ userId: string, username: string | null, email: string | null }} AuthUser
- */
+/** @typedef {import("../api/authApi").AuthUser} AuthUser */
 
 /** @typedef {'unauthenticated' | 'restoring' | 'authenticated'} AuthStatus */
 
@@ -54,6 +52,11 @@ export function AuthProvider({ children }) {
           userId: "",
           username: null,
           email: null,
+          firstName: null,
+          lastName: null,
+          phone: null,
+          timezone: null,
+          smsOptIn: false,
         };
         setUser(resolved);
         if (nextUser) {
@@ -87,6 +90,16 @@ export function AuthProvider({ children }) {
       } catch {
         nextUser = null;
       }
+    } else {
+      // Login/register bodies are often minimal; GET /auth/me is the canonical profile.
+      try {
+        const fromMe = await fetchCurrentUser();
+        if (fromMe) {
+          nextUser = fromMe;
+        }
+      } catch {
+        /* keep user from response */
+      }
     }
     if (!nextUser) {
       clearDisplayProfileOnly();
@@ -95,6 +108,11 @@ export function AuthProvider({ children }) {
       userId: "",
       username: null,
       email: null,
+      firstName: null,
+      lastName: null,
+      phone: null,
+      timezone: null,
+      smsOptIn: false,
     };
     setUser(resolved);
     if (nextUser) {
@@ -114,6 +132,16 @@ export function AuthProvider({ children }) {
     setStatus("unauthenticated");
   }, []);
 
+  /** Refetch profile from GET /auth/me and update state + display cache. */
+  const refreshUser = useCallback(async () => {
+    const next = await fetchCurrentUser();
+    if (next) {
+      setUser(next);
+      writeDisplayProfile(next);
+    }
+    return next;
+  }, []);
+
   const value = useMemo(
     () => ({
       status,
@@ -122,8 +150,9 @@ export function AuthProvider({ children }) {
       isRestoring: status === "restoring",
       establishSession,
       logout,
+      refreshUser,
     }),
-    [status, user, establishSession, logout],
+    [status, user, establishSession, logout, refreshUser],
   );
 
   return (

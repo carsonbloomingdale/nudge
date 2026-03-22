@@ -27,6 +27,11 @@ export function readDisplayProfile() {
       userId: String(o.userId),
       username: o.username != null ? String(o.username) : null,
       email: o.email != null ? String(o.email) : null,
+      firstName: o.firstName != null ? String(o.firstName) : null,
+      lastName: o.lastName != null ? String(o.lastName) : null,
+      phone: o.phone != null ? String(o.phone) : null,
+      timezone: o.timezone != null ? String(o.timezone) : null,
+      smsOptIn: Boolean(o.smsOptIn),
     };
   } catch {
     return null;
@@ -43,6 +48,11 @@ export function writeDisplayProfile(profile) {
       userId: profile.userId,
       username: profile.username ?? null,
       email: profile.email ?? null,
+      firstName: profile.firstName ?? null,
+      lastName: profile.lastName ?? null,
+      phone: profile.phone ?? null,
+      timezone: profile.timezone ?? null,
+      smsOptIn: Boolean(profile.smsOptIn),
     }),
   );
 }
