@@ -34,6 +34,22 @@ export function readDisplayProfile() {
       phone: o.phone != null ? String(o.phone) : null,
       timezone: o.timezone != null ? String(o.timezone) : null,
       smsOptIn: Boolean(o.smsOptIn),
+      phoneVerified: (() => {
+        const b = o.phoneVerified;
+        if (b === true || b === "true" || b === 1) {
+          return true;
+        }
+        if (b === false || b === "false" || b === 0) {
+          return false;
+        }
+        return (
+          o.phoneVerifiedAt != null && String(o.phoneVerifiedAt).trim() !== ""
+        );
+      })(),
+      phoneVerifiedAt:
+        o.phoneVerifiedAt != null && String(o.phoneVerifiedAt).trim() !== ""
+          ? String(o.phoneVerifiedAt).trim()
+          : null,
     };
   } catch {
     return null;
@@ -55,6 +71,8 @@ export function writeDisplayProfile(profile) {
       phone: profile.phone ?? null,
       timezone: profile.timezone ?? null,
       smsOptIn: Boolean(profile.smsOptIn),
+      phoneVerified: Boolean(profile.phoneVerified),
+      phoneVerifiedAt: profile.phoneVerifiedAt ?? null,
     }),
   );
 }

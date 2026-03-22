@@ -3,6 +3,7 @@ import {
   StyledHeader,
   StyledMain,
   StyledMuted,
+  AuthLegalNote,
   AuthLinks,
 } from "../components/auth/authStyles";
 
@@ -23,6 +24,9 @@ export default function MagicLinkPage() {
             <Link to="/auth/login">Back to sign in</Link>
             <Link to="/auth/signup">Create an account</Link>
           </AuthLinks>
+          <AuthLegalNote>
+            <Link to="/terms">Terms &amp; Conditions</Link>
+          </AuthLegalNote>
         </StyledMain>
       </header>
     </div>

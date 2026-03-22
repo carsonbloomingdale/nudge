@@ -250,6 +250,33 @@ export const AuthLinks = styled.nav`
   }
 `;
 
+/** Muted one-line legal / policy link under auth forms (login, signup footer, etc.). */
+export const AuthLegalNote = styled.p`
+  margin: 0.75rem 0 0;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+
+  a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
+
+    &:focus-visible {
+      outline: 2px solid hsl(var(--primary));
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+  }
+`;
+
 export const StyledOptionalHeading = styled.h3`
   margin: 0.5rem 0 0;
   width: 100%;

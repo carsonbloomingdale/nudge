@@ -16,6 +16,7 @@ import {
   StyledError,
   StyledInput,
   StyledMain,
+  AuthLegalNote,
   AuthLinks,
 } from "../components/auth/authStyles";
 
@@ -117,6 +118,9 @@ export default function LoginPage() {
             <Link to="/auth/signup">Create an account</Link>
             <Link to="/auth/magic">Sign in with magic link</Link>
           </AuthLinks>
+          <AuthLegalNote>
+            <Link to="/terms">Terms &amp; Conditions</Link>
+          </AuthLegalNote>
         </StyledMain>
       </header>
     </div>

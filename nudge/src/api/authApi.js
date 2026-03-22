@@ -23,6 +23,32 @@ export function patchCurrentUser(patch) {
   return http.patch("/auth/me", patch);
 }
 
+/**
+ * POST /auth/me/sms/test — send a one-off test SMS to the saved number (empty body).
+ * @returns {Promise<import("axios").AxiosResponse<{ ok: boolean }>>}
+ */
+export function postSmsTest() {
+  return http.post("/auth/me/sms/test", {});
+}
+
+/**
+ * POST /auth/me/phone/send-verification-code — empty body.
+ * Response: **AuthMeResponse** (full profile; use to refresh `phone_verified` / UI).
+ */
+export function postSendPhoneVerificationCode() {
+  return http.post("/auth/me/phone/send-verification-code", {});
+}
+
+/**
+ * POST /auth/me/phone/verify — body `{ code: "123456" }` (6-digit).
+ * Response: **AuthMeResponse** with `phone_verified: true` when successful.
+ * @param {string} code
+ */
+export function postVerifyPhoneCode(code) {
+  const digits = String(code ?? "").replace(/\D/g, "").slice(0, 6);
+  return http.post("/auth/me/phone/verify", { code: digits });
+}
+
 export function logoutApi() {
   return http.post("/auth/logout", {}, { skipAuthRefresh: true });
 }
@@ -98,6 +124,8 @@ export async function fetchCurrentUserResilient() {
  *   phone: string | null,
  *   timezone: string | null,
  *   smsOptIn: boolean,
+ *   phoneVerified: boolean,
+ *   phoneVerifiedAt: string | null,
  * }} AuthUser
  */
 
@@ -119,6 +147,18 @@ export function normalizeUserPayload(data) {
         : null;
   const smsRaw = u.sms_opt_in ?? u.smsOptIn;
   const smsOptIn = smsRaw === true || smsRaw === "true" || smsRaw === 1;
+  const pv = u.phone_verified_at ?? u.phoneVerifiedAt;
+  const phoneVerifiedAt =
+    pv != null && String(pv).trim() !== "" ? String(pv).trim() : null;
+  const pvFlag = u.phone_verified ?? u.phoneVerified;
+  let phoneVerified;
+  if (pvFlag === true || pvFlag === "true" || pvFlag === 1) {
+    phoneVerified = true;
+  } else if (pvFlag === false || pvFlag === "false" || pvFlag === 0) {
+    phoneVerified = false;
+  } else {
+    phoneVerified = Boolean(phoneVerifiedAt);
+  }
   return {
     userId: String(userId),
     username: displayName,
@@ -135,12 +175,17 @@ export function normalizeUserPayload(data) {
         : u.lastName != null
           ? String(u.lastName)
           : null,
-    phone: u.phone != null && String(u.phone).trim() !== "" ? String(u.phone) : null,
+    phone: (() => {
+      const raw = u.phone ?? u.phone_e164;
+      return raw != null && String(raw).trim() !== "" ? String(raw) : null;
+    })(),
     timezone:
       u.timezone != null && String(u.timezone).trim() !== ""
         ? String(u.timezone)
         : null,
     smsOptIn,
+    phoneVerified,
+    phoneVerifiedAt,
   };
 }
 
@@ -161,7 +206,21 @@ export function messageFromAuthError(err, opts = {}) {
       : "This update could not be applied (for example, that phone may already be in use).";
   }
   if (status === 503) {
+    const d503 = data?.detail;
+    if (typeof d503 === "string" && d503.trim()) {
+      return d503.trim();
+    }
     return "Service temporarily unavailable. Try again later.";
+  }
+  if (status === 401) {
+    return "Not signed in or your session expired. Sign in again.";
+  }
+  if (status === 502) {
+    const d502 = data?.detail;
+    if (typeof d502 === "string" && d502.trim()) {
+      return d502.trim();
+    }
+    return "Could not send the text message. Try again later.";
   }
   const detail = data?.detail;
   if (typeof detail === "string" && detail.trim()) {

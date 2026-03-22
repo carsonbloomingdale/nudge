@@ -154,6 +154,25 @@ export function AuthProvider({ children }) {
     return next;
   }, []);
 
+  /**
+   * Merge **AuthMeResponse** (or same shape) from PATCH/verify/send-code without a separate GET /auth/me.
+   * @param {unknown} data
+   * @returns {AuthUser | null}
+   */
+  const applyMeResponse = useCallback((data) => {
+    const next = normalizeUserPayload(data);
+    if (!next?.userId) {
+      return null;
+    }
+    setUser((prev) => {
+      const merged =
+        prev?.userId === next.userId ? { ...prev, ...next } : next;
+      writeDisplayProfile(merged);
+      return merged;
+    });
+    return next;
+  }, []);
+
   const value = useMemo(
     () => ({
       status,
@@ -163,8 +182,9 @@ export function AuthProvider({ children }) {
       establishSession,
       logout,
       refreshUser,
+      applyMeResponse,
     }),
-    [status, user, establishSession, logout, refreshUser],
+    [status, user, establishSession, logout, refreshUser, applyMeResponse],
   );
 
   return (
