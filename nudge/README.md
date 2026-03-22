@@ -72,10 +72,15 @@ Client sends `Content-Type: application/json` only — **no OpenAI key** in the 
 | | |
 |--|--|
 | **Root directory** | `nudge` (if repo root is the monorepo) |
-| **Build command** | `npm ci && npm run build` (Heroku also runs **`heroku-postbuild`** → `build` after install) |
+| **Build command** | `npm ci && npm run build` (Heroku’s Node buildpack runs **`npm run build`** automatically when the `build` script exists) |
 | **Run command** | **`npm start`** (default on Heroku; serves `build/` on **`PORT`**) |
 
 Set **`REACT_APP_*`** in the platform **environment** so **`npm run build`** bakes the right API URL into the bundle.
+
+**Heroku build fails on `npm run build`?**
+
+- Set the app **root** to the **`nudge`** folder (monorepo: [Project root / `PROJECT_PATH`](https://devcenter.heroku.com/articles/monorepos) or equivalent), so Heroku uses this `package.json` + `package-lock.json`.
+- The `build` script uses **`GENERATE_SOURCEMAP=false`** to reduce memory; if you still see **JavaScript heap out of memory**, set a config var: **`NODE_OPTIONS=--max-old-space-size=4096`** (if your dyno has enough RAM).
 
 ## Environment variables
 
