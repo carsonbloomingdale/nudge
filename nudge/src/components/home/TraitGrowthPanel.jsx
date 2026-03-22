@@ -1,5 +1,10 @@
+import { useMemo } from "react";
 import styled from "styled-components";
 import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
+import {
+  aggregateTraitStatsFromTasks,
+  DEFAULT_TRAIT_GROWTH_CAP,
+} from "./traitUtils";
 
 const Wrap = styled.section``;
 
@@ -57,13 +62,6 @@ const Meta = styled.span`
   color: hsl(var(--muted-foreground));
 `;
 
-const Change = styled.span`
-  margin-left: 0.35rem;
-  font-weight: 600;
-  color: ${(p) =>
-    p.$dir === "up" ? "hsl(145 40% 32%)" : "hsl(var(--primary))"};
-`;
-
 const Track = styled.div`
   height: 8px;
   border-radius: 9999px;
@@ -75,20 +73,30 @@ const Fill = styled.div`
   height: 100%;
   width: ${(p) => p.$pct}%;
   border-radius: 9999px;
-  background: hsl(var(${(p) => p.$var}));
+  background: ${(p) =>
+    p.$hsl
+      ? `hsl(${p.$hsl})`
+      : p.$cssVar
+        ? `hsl(var(${p.$cssVar}))`
+        : "hsl(var(--primary))"};
 `;
 
-/** Illustrative growth row until API lands. */
-const ROWS = [
-  { label: "Creative", varName: "--trait-creative", pct: 62, delta: 2 },
-  { label: "Social", varName: "--trait-social", pct: 78, delta: 4 },
-  { label: "Analytical", varName: "--trait-analytical", pct: 54, delta: -1 },
-  { label: "Adventurous", varName: "--trait-adventurous", pct: 71, delta: 3 },
-  { label: "Nurturing", varName: "--trait-nurturing", pct: 66, delta: -2 },
-  { label: "Disciplined", varName: "--trait-disciplined", pct: 59, delta: 1 },
-];
+const Empty = styled.p`
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: hsl(var(--muted-foreground));
+`;
 
-export default function TraitGrowthPanel() {
+/**
+ * @param {{ tasks?: unknown[] }} props
+ */
+export default function TraitGrowthPanel({ tasks }) {
+  const { orderedTraits, hasData, maxCount, totalTraitMentions } = useMemo(
+    () => aggregateTraitStatsFromTasks(tasks, DEFAULT_TRAIT_GROWTH_CAP),
+    [tasks],
+  );
+
   return (
     <Wrap className="animate-fade-up stagger-350">
       <TitleRow>
@@ -96,24 +104,36 @@ export default function TraitGrowthPanel() {
         <FeaturePreviewBadge compact />
       </TitleRow>
       <Card>
-        <Stack>
-          {ROWS.map((r) => (
-            <Row key={r.label}>
-              <RowTop>
-                <Label>{r.label}</Label>
-                <Meta className="tabular-nums">
-                  {r.pct}%
-                  <Change $dir={r.delta >= 0 ? "up" : "down"}>
-                    {r.delta >= 0 ? `+${r.delta}%` : `${r.delta}%`}
-                  </Change>
-                </Meta>
-              </RowTop>
-              <Track>
-                <Fill $pct={r.pct} $var={r.varName} />
-              </Track>
-            </Row>
-          ))}
-        </Stack>
+        {!hasData ? (
+          <Empty>
+            As you log moments, we tally how often each personality trait shows
+            up — bars grow with repetition.
+          </Empty>
+        ) : (
+          <Stack>
+            {orderedTraits.map((t) => {
+              const pct =
+                maxCount > 0 ? Math.round((t.count / maxCount) * 100) : 0;
+              const share =
+                totalTraitMentions > 0
+                  ? Math.round((t.count / totalTraitMentions) * 100)
+                  : 0;
+              return (
+                <Row key={t.id}>
+                  <RowTop>
+                    <Label>{t.label}</Label>
+                    <Meta className="tabular-nums">
+                      {t.count}× · {share}% of traits
+                    </Meta>
+                  </RowTop>
+                  <Track>
+                    <Fill $pct={pct} $cssVar={t.cssVar} $hsl={t.hsl} />
+                  </Track>
+                </Row>
+              );
+            })}
+          </Stack>
+        )}
       </Card>
     </Wrap>
   );

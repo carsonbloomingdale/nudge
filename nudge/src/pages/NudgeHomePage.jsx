@@ -353,8 +353,8 @@ export default function NudgeHomePage() {
           )}
         </DesktopLeft>
         <DesktopRight>
-          <IdentityRadar />
-          <TraitGrowthPanel />
+          <IdentityRadar tasks={taskList} />
+          <TraitGrowthPanel tasks={taskList} />
           <ActiveGoalsPanel />
         </DesktopRight>
       </DesktopMain>

@@ -5,6 +5,18 @@ import {
   sortTasksChronologically,
 } from "./journalApi";
 
+function normalizePersonalityTraits(raw) {
+  if (raw == null) {
+    return [];
+  }
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr
+    .map((x) =>
+      typeof x === "string" ? x.trim() : String(x ?? "").trim(),
+    )
+    .filter(Boolean);
+}
+
 /** Normalize list from GET /tasks (shape may vary). */
 export function mapTasksResponse(data) {
   const raw = Array.isArray(data)
@@ -17,6 +29,9 @@ export function mapTasksResponse(data) {
       t.title ??
       t.name ??
       (t.id != null ? String(t.id) : ""),
+    personality_traits: normalizePersonalityTraits(
+      t.personality_traits ?? t.personalityTraits,
+    ),
   }));
 }
 

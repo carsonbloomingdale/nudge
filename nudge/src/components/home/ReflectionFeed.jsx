@@ -1,6 +1,11 @@
 import styled from "styled-components";
 import { legacyTasksToJournals } from "../../model/journal";
-import { traitForEntry, formatReflectionTime } from "./traitUtils";
+import {
+  extractPersonalityTraits,
+  formatReflectionTime,
+  traitForEntry,
+  traitThemeForSlug,
+} from "./traitUtils";
 
 const SectionTitle = styled.h2`
   margin: 0 0 1rem;
@@ -47,8 +52,18 @@ const TraitBadge = styled.span`
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  background: hsl(var(${(p) => p.$var}) / 0.12);
-  color: hsl(var(${(p) => p.$var}));
+  background: ${(p) =>
+    p.$hsl
+      ? `hsl(${p.$hsl} / 0.14)`
+      : p.$var
+        ? `hsl(var(${p.$var}) / 0.12)`
+        : "hsl(var(--primary) / 0.12)"};
+  color: ${(p) =>
+    p.$hsl
+      ? `hsl(${p.$hsl})`
+      : p.$var
+        ? `hsl(var(${p.$var}))`
+        : "hsl(var(--primary))"};
 `;
 
 const Time = styled.time`
@@ -135,7 +150,11 @@ export default function ReflectionFeed({
         {rows.map((journal, index) => {
           const items = journal.items ?? [];
           const primary = items[0];
-          const trait = traitForEntry(primary?.label, index);
+          const fromApi = extractPersonalityTraits(primary ?? {}, index);
+          const fallback = traitForEntry(primary?.label, index);
+          const trait = fromApi.length
+            ? traitThemeForSlug(fromApi[0])
+            : { label: fallback.label, cssVar: fallback.cssVar, hsl: null };
           const ts = formatReflectionTime({
             submittedAt: journal.submittedAt,
             created_at: primary?.created_at,
@@ -151,7 +170,9 @@ export default function ReflectionFeed({
               style={{ animationDelay: `${index * 80}ms` }}
             >
               <TopRow>
-                <TraitBadge $var={trait.cssVar}>{trait.label}</TraitBadge>
+                <TraitBadge $var={trait.cssVar} $hsl={trait.hsl}>
+                  {trait.label}
+                </TraitBadge>
                 <Time dateTime={journal.submittedAt || primary?.created_at}>
                   {ts}
                 </Time>
