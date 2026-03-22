@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import fetchTaskData from "../api/fetchTaskData";
 import fetchSuggestion from "../api/fetchSuggestion";
 import { fetchAuthenticatedTasks } from "../api/taskApi";
+import PullToRefresh from "../components/PullToRefresh";
 import WelcomeSection from "../components/home/WelcomeSection";
 import StatsRow from "../components/home/StatsRow";
 import ReflectionFeed from "../components/home/ReflectionFeed";
@@ -77,6 +78,22 @@ export default function NudgeHomePage() {
   const [taskList, setTaskList] = useState();
   const [currentSubmitted, setCurrentSubmitted] = useState();
   const [promptFieldKey, setPromptFieldKey] = useState(0);
+  const [listRefreshing, setListRefreshing] = useState(false);
+
+  const refreshFromBackend = useCallback(async () => {
+    setListRefreshing(true);
+    try {
+      refreshStreak();
+      try {
+        const list = await fetchAuthenticatedTasks();
+        setTaskList(list);
+      } catch {
+        setTaskList([]);
+      }
+    } finally {
+      setListRefreshing(false);
+    }
+  }, [refreshStreak]);
 
   useEffect(() => {
     if (submittedDid && taskList && currentSubmitted !== submittedDid) {
@@ -88,6 +105,7 @@ export default function NudgeHomePage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      refreshStreak();
       try {
         const list = await fetchAuthenticatedTasks();
         if (!cancelled) {
@@ -102,10 +120,6 @@ export default function NudgeHomePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    refreshStreak();
   }, [refreshStreak]);
 
   const submitEntry = useCallback(
@@ -166,8 +180,15 @@ export default function NudgeHomePage() {
   const weekSlice = Math.min(totalMoments, 7);
 
   return (
-    <>
-      <WelcomeSection />
+    <PullToRefresh
+      onRefresh={refreshFromBackend}
+      refreshing={listRefreshing}
+      disabled={listRefreshing}
+    >
+      <WelcomeSection
+        onRefresh={refreshFromBackend}
+        refreshing={listRefreshing}
+      />
       <StatsRow
         streakCount={streakCount}
         totalMoments={totalMoments}
@@ -204,6 +225,6 @@ export default function NudgeHomePage() {
           <ActiveGoalsPanel />
         </DesktopRight>
       </DesktopMain>
-    </>
+    </PullToRefresh>
   );
 }
