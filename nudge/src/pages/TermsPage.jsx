@@ -81,6 +81,20 @@ export default function TermsPage() {
           </Section>
 
           <Section>
+            <SectionHeading>Data privacy and AI processing</SectionHeading>
+            <SectionBody>
+              To provide journaling insights, trait mapping, and related
+              features, content you submit in the app (such as journal text and
+              associated metadata) may be sent to third-party AI providers for
+              processing. By using Nudge and submitting content, you authorize
+              this processing and understand that AI outputs may be
+              probabilistic and not always accurate. If you do not consent to
+              this AI-related data processing, do not submit content through
+              Nudge.
+            </SectionBody>
+          </Section>
+
+          <Section>
             <SectionHeading>Disclaimer</SectionHeading>
             <SectionBody>
               Nudge is provided &quot;as is&quot; without warranties of any
