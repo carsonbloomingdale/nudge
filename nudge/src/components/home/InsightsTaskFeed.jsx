@@ -4,7 +4,7 @@ import { deleteTask } from "../../api/taskApi";
 import { formatReflectionTime } from "./traitUtils";
 
 const SectionTitle = styled.h2`
-  margin: 0 0 1rem;
+  margin: 0 0 0.35rem;
   font-family: var(--font-display), serif;
   font-size: 1.25rem;
   font-weight: 400;
@@ -13,7 +13,7 @@ const SectionTitle = styled.h2`
 `;
 
 const Sub = styled.p`
-  margin: -0.5rem 0 1rem;
+  margin: 0 0 1rem;
   font-size: 13px;
   line-height: 1.45;
   color: hsl(var(--muted-foreground));
@@ -103,15 +103,18 @@ const Time = styled.time`
 `;
 
 const Body = styled.p`
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.35rem;
   font-size: 15px;
   line-height: 1.6;
+  font-weight: 600;
   color: hsl(var(--foreground) / 0.9);
   overflow-wrap: break-word;
 `;
 
 const Detail = styled.p`
   margin: 0;
+  padding-left: 0.6rem;
+  border-left: 2px solid hsl(var(--border) / 0.65);
   font-size: 13px;
   line-height: 1.5;
   color: hsl(var(--muted-foreground));
@@ -121,7 +124,8 @@ const TraitRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  margin-top: 0.55rem;
+  margin-top: 0.65rem;
+  padding-left: 0.6rem;
 `;
 
 const Trait = styled.button`

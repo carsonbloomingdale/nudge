@@ -129,6 +129,14 @@ const MobileSuggestBtn = styled.button`
   }
 `;
 
+const TimelinePanel = styled.section`
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: hsl(var(--card) / 0.72);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+`;
+
 export default function NudgeHomePage() {
   const {
     registerJournalSubmit,
@@ -497,7 +505,7 @@ export default function NudgeHomePage() {
 
       <MobileStack>
         <MobileWriteHint>
-          Tap the terracotta{" "}
+          Tap the{" "}
           <strong style={{ color: "hsl(var(--primary))" }}>Write</strong>{" "}
           button below to capture your day — or open{" "}
           <InlineLink to="/app/identity">Identity</InlineLink> and{" "}
@@ -526,7 +534,7 @@ export default function NudgeHomePage() {
             />
           )}
         </MobileSuggestCard>
-        <div ref={mobileJournalTimelineRef}>
+        <TimelinePanel ref={mobileJournalTimelineRef}>
           <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
           {feedMode === "journals" ? (
             <JournalFeed
@@ -546,7 +554,7 @@ export default function NudgeHomePage() {
               onRefresh={refreshFromBackend}
             />
           )}
-        </div>
+        </TimelinePanel>
       </MobileStack>
 
       <DesktopMain>
@@ -562,7 +570,7 @@ export default function NudgeHomePage() {
             attachmentFiles={desktopAttachFiles}
             onAttachmentFilesChange={setDesktopAttachFiles}
           />
-          <div ref={desktopJournalTimelineRef}>
+          <TimelinePanel ref={desktopJournalTimelineRef}>
             <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
             {feedMode === "journals" ? (
               <JournalFeed
@@ -582,7 +590,7 @@ export default function NudgeHomePage() {
                 onRefresh={refreshFromBackend}
               />
             )}
-          </div>
+          </TimelinePanel>
         </DesktopLeft>
         <DesktopRight>
           <IdentityRadar
