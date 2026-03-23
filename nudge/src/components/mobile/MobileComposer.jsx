@@ -1,16 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import JournalAttachmentPicker from "../journal/JournalAttachmentPicker";
 import { useAppShell } from "../../context/AppShellContext";
-
-const TRAITS = [
-  { id: "creative", label: "Creative", varName: "--trait-creative" },
-  { id: "social", label: "Social", varName: "--trait-social" },
-  { id: "analytical", label: "Analytical", varName: "--trait-analytical" },
-  { id: "adventurous", label: "Adventurous", varName: "--trait-adventurous" },
-  { id: "nurturing", label: "Nurturing", varName: "--trait-nurturing" },
-  { id: "disciplined", label: "Disciplined", varName: "--trait-disciplined" },
-];
 
 const PROMPTS = [
   "What felt meaningful, even if it was small?",
@@ -93,9 +84,9 @@ const Inspire = styled.p`
 `;
 
 const TextArea = styled.textarea`
-  flex: 1;
   width: 100%;
-  min-height: 12rem;
+  min-height: 10rem;
+  max-height: 55vh;
   resize: none;
   border: none;
   border-radius: var(--radius);
@@ -118,78 +109,22 @@ const TextArea = styled.textarea`
   }
 `;
 
-const TraitBar = styled.div`
-  flex-shrink: 0;
-  padding: 0.75rem 0
-    calc(0.85rem + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid hsl(var(--border) / 0.45);
-  background: hsl(var(--muted) / 0.35);
-`;
-
-const TraitLabel = styled.div`
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: hsl(var(--muted-foreground));
-  margin: 0 1rem 0.5rem;
-`;
-
-const TraitScroll = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding: 0 1rem 0.15rem;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-`;
-
-const TraitPill = styled.button`
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  border: 1px solid hsl(var(--border) / 0.55);
-  border-radius: 9999px;
-  padding: 0.45rem 0.9rem;
-  font-family: var(--font-sans), sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: ${(p) =>
-    p.$active
-      ? `hsl(var(${p.$traitVar}) / 0.18)`
-      : "hsl(var(--card) / 0.85)"};
-  color: ${(p) =>
-    p.$active ? `hsl(var(${p.$traitVar}))` : "hsl(var(--foreground))"};
-  box-shadow: ${(p) =>
-    p.$active ? `0 0 0 2px hsl(var(${p.$traitVar}) / 0.25)` : "none"};
-  transition: transform 200ms ease, background 200ms ease, color 200ms ease;
-
-  &:active {
-    transform: scale(0.97);
-  }
-
-  &:focus-visible {
-    outline: 2px solid hsl(var(--primary) / 0.35);
-    outline-offset: 2px;
-  }
-`;
-
 export default function MobileComposer() {
-  const { composerOpen, closeComposer, submitJournalEntry } = useAppShell();
+  const {
+    composerOpen,
+    closeComposer,
+    submitJournalEntry,
+    composerSubmitLabel,
+  } = useAppShell();
   const [text, setText] = useState("");
   const [attachFiles, setAttachFiles] = useState([]);
-  const [traitId, setTraitId] = useState(null);
   const [promptIx, setPromptIx] = useState(0);
   const [saving, setSaving] = useState(false);
+  const textAreaRef = useRef(null);
 
   useEffect(() => {
     if (composerOpen) {
       setPromptIx(Math.floor(Math.random() * PROMPTS.length));
-      setTraitId(null);
       setAttachFiles([]);
     }
   }, [composerOpen]);
@@ -216,6 +151,15 @@ export default function MobileComposer() {
     return () => mq.removeEventListener("change", onChange);
   }, [closeComposer]);
 
+  useEffect(() => {
+    const el = textAreaRef.current;
+    if (!el) {
+      return;
+    }
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, 160)}px`;
+  }, [text, composerOpen]);
+
   const handleClose = useCallback(() => {
     setText("");
     setAttachFiles([]);
@@ -227,16 +171,15 @@ export default function MobileComposer() {
     if (!trimmed || saving) {
       return;
     }
+    const filesToSubmit = [...attachFiles];
+    setText("");
+    setAttachFiles([]);
+    closeComposer();
     setSaving(true);
     try {
       const opts =
-        attachFiles.length > 0 ? { files: attachFiles } : undefined;
-      const ok = await submitJournalEntry(trimmed, opts);
-      if (ok) {
-        setText("");
-        setAttachFiles([]);
-        closeComposer();
-      }
+        filesToSubmit.length > 0 ? { files: filesToSubmit } : undefined;
+      await submitJournalEntry(trimmed, opts);
     } finally {
       setSaving(false);
     }
@@ -257,14 +200,16 @@ export default function MobileComposer() {
         <SaveBtn
           type="button"
           onClick={handleSave}
-          disabled={!text.trim() || saving}
+          disabled={!text.trim() || saving || Boolean(composerSubmitLabel)}
         >
-          {saving ? "Saving…" : "Save"}
+          {composerSubmitLabel ||
+            (saving ? "Saving…" : "Save")}
         </SaveBtn>
       </TopBar>
       <Body>
         <Inspire>{PROMPTS[promptIx]}</Inspire>
         <TextArea
+          ref={textAreaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Let the page hold whatever you want to remember…"
@@ -277,24 +222,6 @@ export default function MobileComposer() {
           tight
         />
       </Body>
-      <TraitBar>
-        <TraitLabel>Mood / lens (optional)</TraitLabel>
-        <TraitScroll>
-          {TRAITS.map((t) => (
-            <TraitPill
-              key={t.id}
-              type="button"
-              $active={traitId === t.id}
-              $traitVar={t.varName}
-              onClick={() =>
-                setTraitId((cur) => (cur === t.id ? null : t.id))
-              }
-            >
-              {t.label}
-            </TraitPill>
-          ))}
-        </TraitScroll>
-      </TraitBar>
     </Overlay>
   );
 }

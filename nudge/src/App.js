@@ -11,8 +11,8 @@ import AppLayout from "./layouts/AppLayout";
 import AccountPage from "./pages/AccountPage";
 import NudgeHomePage from "./pages/NudgeHomePage";
 import SettingsPage from "./pages/SettingsPage";
-import InsightsPage from "./pages/InsightsPage";
-import GoalsPage from "./pages/GoalsPage";
+import IdentityMapPage from "./pages/IdentityMapPage";
+import TraitGrowthPage from "./pages/TraitGrowthPage";
 import TermsPage from "./pages/TermsPage";
 
 function RootRedirect() {
@@ -63,8 +63,10 @@ function AppRoutes() {
         }
       >
         <Route index element={<NudgeHomePage />} />
-        <Route path="insights" element={<InsightsPage />} />
-        <Route path="goals" element={<GoalsPage />} />
+        <Route path="identity" element={<IdentityMapPage />} />
+        <Route path="traits" element={<TraitGrowthPage />} />
+        <Route path="insights" element={<Navigate to="/app/identity" replace />} />
+        <Route path="goals" element={<Navigate to="/app/traits" replace />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
