@@ -1,7 +1,18 @@
 import { useMemo } from "react";
 import styled from "styled-components";
-import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
+import ChartLoadingPlaceholder from "./ChartLoadingPlaceholder";
 import { aggregateTraitStatsFromTasks } from "./traitUtils";
+import { segmentsToRadarTraits } from "./personalityChartUtils";
+
+const MAX_VISIBLE_TRAITS = 6;
+const DISPLAY_TRAIT_VARS = [
+  "--trait-creative",
+  "--trait-social",
+  "--trait-analytical",
+  "--trait-adventurous",
+  "--trait-nurturing",
+  "--trait-disciplined",
+];
 
 const Wrap = styled.section``;
 
@@ -23,12 +34,27 @@ const Title = styled.h2`
   color: hsl(var(--foreground));
 `;
 
+const Sub = styled.p`
+  margin: 0 0 1rem;
+  font-size: 12px;
+  line-height: 1.4;
+  color: hsl(var(--muted-foreground));
+
+  @media (max-width: 1023px) {
+    font-size: 13px;
+  }
+`;
+
 const Card = styled.div`
   padding: 1.25rem;
   border-radius: 0.75rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.5);
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+
+  @media (max-width: 1023px) {
+    padding: 1rem 0.75rem;
+  }
 `;
 
 const ChartWrap = styled.div`
@@ -47,6 +73,10 @@ const Legend = styled.ul`
   justify-content: center;
   gap: 0.5rem 1rem;
   max-width: 260px;
+
+  @media (max-width: 1023px) {
+    max-width: 100%;
+  }
 `;
 
 const LegendItem = styled.li`
@@ -56,6 +86,10 @@ const LegendItem = styled.li`
   font-size: 0.6875rem;
   font-weight: 600;
   color: hsl(var(--muted-foreground));
+
+  @media (max-width: 1023px) {
+    font-size: 0.75rem;
+  }
 `;
 
 const Dot = styled.span`
@@ -97,10 +131,19 @@ const SingleMeta = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
+const HiddenTraitsNote = styled.p`
+  margin: -0.25rem 0 0;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+`;
+
 const CX = 130;
 const CY = 130;
 const R_MAX = 82;
 const LEVELS = [0.25, 0.5, 0.75, 1];
+const MOBILE_CHART_SIZE = 330;
+const DESKTOP_CHART_SIZE = 240;
 
 function polar(angleRad, r) {
   return {
@@ -110,6 +153,9 @@ function polar(angleRad, r) {
 }
 
 function fillForTrait(t) {
+  if (t.uiCssVar) {
+    return `hsl(var(${t.uiCssVar}))`;
+  }
   if (t.cssVar) {
     return `hsl(var(${t.cssVar}))`;
   }
@@ -117,16 +163,62 @@ function fillForTrait(t) {
 }
 
 /**
- * @param {{ tasks?: unknown[] }} props
+ * @param {{
+ *   tasks?: unknown[],
+ *   analytics?: import("../../api/analyticsApi").PersonalityTraitsChartResponse | null,
+ *   analyticsLoading?: boolean,
+ *   analyticsFailed?: boolean,
+ * }} props
  */
-export default function IdentityRadar({ tasks }) {
-  const { orderedTraits, hasData } = useMemo(
-    () => aggregateTraitStatsFromTasks(tasks),
-    [tasks],
-  );
+export default function IdentityRadar({
+  tasks,
+  analytics,
+  analyticsLoading,
+  analyticsFailed,
+}) {
+  const viz = useMemo(() => {
+    if (analyticsLoading) {
+      return { kind: "loading" };
+    }
+    if (analytics && !analyticsFailed) {
+      const total = analytics.total_associations ?? 0;
+      const segs = analytics.segments ?? [];
+      if (total > 0 && segs.length > 0) {
+        const radarTraits = segmentsToRadarTraits(segs);
+        return {
+          kind: "analytics",
+          radarTraits,
+          chartMode: analytics.chart_mode,
+        };
+      }
+      return { kind: "empty_db" };
+    }
+    const fromTasks = aggregateTraitStatsFromTasks(tasks);
+    if (fromTasks.hasData) {
+      return {
+        kind: "tasks",
+        radarTraits: fromTasks.orderedTraits,
+      };
+    }
+    return { kind: "empty" };
+  }, [tasks, analytics, analyticsLoading, analyticsFailed]);
 
-  const radarTraits = orderedTraits;
-  const axes = radarTraits.length;
+  const radarTraits = useMemo(() => {
+    if (viz.kind === "analytics" || viz.kind === "tasks") {
+      return viz.radarTraits;
+    }
+    return [];
+  }, [viz]);
+  const displayedTraits = useMemo(
+    () =>
+      radarTraits
+        .slice(0, MAX_VISIBLE_TRAITS)
+        .map((t, i) => ({ ...t, uiCssVar: DISPLAY_TRAIT_VARS[i] })),
+    [radarTraits],
+  );
+  const hiddenTraitsCount = Math.max(0, radarTraits.length - displayedTraits.length);
+
+  const axes = displayedTraits.length;
 
   const angles = useMemo(
     () =>
@@ -137,28 +229,52 @@ export default function IdentityRadar({ tasks }) {
     [axes],
   );
 
+  const hasData = viz.kind === "analytics" || viz.kind === "tasks";
+
   const polyPoints = useMemo(() => {
     if (axes < 2) {
       return "";
     }
     return angles
       .map((ang, i) => {
-        const r = R_MAX * (radarTraits[i]?.normalizedScore ?? 0);
+        const r = R_MAX * (displayedTraits[i]?.normalizedScore ?? 0);
         const { x, y } = polar(ang, r);
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       })
       .join(" ");
-  }, [angles, axes, radarTraits]);
+  }, [angles, axes, displayedTraits]);
+
+  const subtitle =
+    viz.kind === "analytics"
+      ? viz.chartMode === "ai"
+        ? "From saved trait links — grouped with AI."
+        : "From saved trait links — distinct labels."
+      : viz.kind === "tasks" && analyticsFailed
+        ? "Analytics unavailable — trait counts from your saved moments."
+        : null;
+  const chartPx =
+    typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches
+      ? MOBILE_CHART_SIZE
+      : DESKTOP_CHART_SIZE;
 
   return (
     <Wrap className="animate-fade-up stagger-300">
       <TitleRow>
         <Title>Your identity map</Title>
-        <FeaturePreviewBadge compact />
       </TitleRow>
+      {subtitle ? <Sub>{subtitle}</Sub> : null}
       <Card>
         <ChartWrap>
-          {!hasData ? (
+          {viz.kind === "loading" ? (
+            <ChartLoadingPlaceholder minHeight="14rem" label="Loading identity map…" />
+          ) : null}
+          {viz.kind === "empty_db" ? (
+            <Empty>
+              No stored personality trait links yet. When enrich persists traits
+              to the database, your map will fill in.
+            </Empty>
+          ) : null}
+          {viz.kind === "empty" ? (
             <Empty>
               Personality traits from your logged moments will shape this map.
               Keep journaling — each entry adds to the picture.
@@ -166,17 +282,19 @@ export default function IdentityRadar({ tasks }) {
           ) : null}
           {hasData && axes < 2 ? (
             <SingleTrait>
-              <SingleLabel>{radarTraits[0].label}</SingleLabel>
+              <SingleLabel>{displayedTraits[0].label}</SingleLabel>
               <SingleMeta>
-                {radarTraits[0].count}× · strongest signal so far — log again to
-                unlock the full map.
+                {displayedTraits[0].count}× · strongest signal
+                {viz.kind === "analytics"
+                  ? " — add more trait links to unlock the full map."
+                  : " so far — log again to unlock the full map."}
               </SingleMeta>
             </SingleTrait>
           ) : null}
           {hasData && axes >= 2 ? (
             <svg
-              width="240"
-              height="240"
+              width={chartPx}
+              height={chartPx}
               viewBox="0 0 260 260"
               style={{ maxWidth: "100%", height: "auto" }}
               aria-hidden
@@ -196,7 +314,7 @@ export default function IdentityRadar({ tasks }) {
                 const { x, y } = polar(ang, R_MAX);
                 return (
                   <line
-                    key={`axis-${radarTraits[i]?.id ?? i}`}
+                    key={`axis-${displayedTraits[i]?.id ?? i}`}
                     x1={CX}
                     y1={CY}
                     x2={x}
@@ -214,7 +332,7 @@ export default function IdentityRadar({ tasks }) {
                 strokeLinejoin="round"
               />
               {angles.map((ang, i) => {
-                const t = radarTraits[i];
+                const t = displayedTraits[i];
                 const r = R_MAX * (t?.normalizedScore ?? 0);
                 const { x, y } = polar(ang, r);
                 return (
@@ -230,8 +348,12 @@ export default function IdentityRadar({ tasks }) {
                 );
               })}
               {angles.map((ang, i) => {
-                const t = radarTraits[i];
+                const t = displayedTraits[i];
                 const { x, y } = polar(ang, R_MAX + 18);
+                const short =
+                  String(t?.label ?? "").length > 14
+                    ? `${String(t?.label).slice(0, 12)}…`
+                    : t?.label;
                 return (
                   <text
                     key={`l-${t?.id ?? i}`}
@@ -240,11 +362,11 @@ export default function IdentityRadar({ tasks }) {
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="hsl(var(--muted-foreground))"
-                    fontSize="9"
+                    fontSize="10"
                     fontWeight="600"
                     fontFamily="var(--font-sans), sans-serif"
                   >
-                    {t?.label}
+                    {short}
                   </text>
                 );
               })}
@@ -252,13 +374,18 @@ export default function IdentityRadar({ tasks }) {
           ) : null}
           {hasData && axes >= 2 ? (
             <Legend>
-              {radarTraits.map((t) => (
+              {displayedTraits.map((t) => (
                 <LegendItem key={t.id}>
-                  <Dot $cssVar={t.cssVar} $hsl={t.hsl} />
+                  <Dot $cssVar={t.uiCssVar ?? t.cssVar} $hsl={t.hsl} />
                   {t.label}
                 </LegendItem>
               ))}
             </Legend>
+          ) : null}
+          {hasData && hiddenTraitsCount > 0 ? (
+            <HiddenTraitsNote>
+              +{hiddenTraitsCount} hidden {hiddenTraitsCount === 1 ? "trait" : "traits"}
+            </HiddenTraitsNote>
           ) : null}
         </ChartWrap>
       </Card>

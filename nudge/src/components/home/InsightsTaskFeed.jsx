@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import styled from "styled-components";
+import { deleteTask } from "../../api/taskApi";
 import { formatReflectionTime } from "./traitUtils";
 
 const SectionTitle = styled.h2`
@@ -40,6 +41,48 @@ const MetaRow = styled.div`
   margin-bottom: 0.55rem;
 `;
 
+const MetaEnd = styled.div`
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+`;
+
+const IconDeleteBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+
+  &:hover:not(:disabled) {
+    background: hsl(var(--foreground) / 0.06);
+    color: hsl(var(--foreground));
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.35);
+    outline-offset: 2px;
+  }
+
+  svg {
+    display: block;
+  }
+`;
+
 const Pill = styled.span`
   display: inline-flex;
   align-items: center;
@@ -54,7 +97,6 @@ const Pill = styled.span`
 `;
 
 const Time = styled.time`
-  margin-left: auto;
   font-size: 0.72rem;
   color: hsl(var(--muted-foreground));
   font-variant-numeric: tabular-nums;
@@ -82,13 +124,17 @@ const TraitRow = styled.div`
   margin-top: 0.55rem;
 `;
 
-const Trait = styled.span`
+const Trait = styled.button`
+  display: inline-flex;
+  align-items: center;
   font-size: 0.65rem;
   font-weight: 500;
   padding: 0.12rem 0.45rem;
   border-radius: 4px;
+  border: none;
   background: hsl(var(--muted) / 0.5);
   color: hsl(var(--foreground) / 0.85);
+  cursor: default;
 `;
 
 const Empty = styled.p`
@@ -108,10 +154,22 @@ function isSpecifiedInsightValue(v) {
 
 function listTraits(t) {
   const raw = t.personality_traits ?? t.personalityTraits;
-  if (Array.isArray(raw)) {
-    return raw.filter((x) => x && isSpecifiedInsightValue(x));
+  if (!Array.isArray(raw)) {
+    return [];
   }
-  return [];
+  const labels = raw.map((x) => {
+    if (x == null) {
+      return "";
+    }
+    if (typeof x === "string") {
+      return x.trim();
+    }
+    if (typeof x === "object" && x.label != null) {
+      return String(x.label).trim();
+    }
+    return "";
+  });
+  return labels.filter((x) => x && isSpecifiedInsightValue(x));
 }
 
 /**
@@ -132,6 +190,39 @@ function useJournalSubmittedAtById(journals) {
     }
     return m;
   }, [journals]);
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M3 6h18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 11v6M14 11v6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 function insightSortTimeMs(t, journalTimeById) {
@@ -159,8 +250,36 @@ export default function InsightsTaskFeed({
   tasks,
   journals = [],
   title = "AI insights",
+  onRefresh = async () => {},
 }) {
+  const [deletingTaskId, setDeletingTaskId] = useState(null);
   const journalTimeById = useJournalSubmittedAtById(journals);
+
+  const removeInsight = useCallback(
+    async (taskId) => {
+      if (taskId == null) {
+        return;
+      }
+      if (
+        !window.confirm(
+          "Remove this insight? Trait links for this line will be removed; your journal entry stays.",
+        )
+      ) {
+        return;
+      }
+      const idStr = String(taskId);
+      setDeletingTaskId(idStr);
+      try {
+        await deleteTask(taskId);
+        await onRefresh();
+      } catch {
+        window.alert("Could not remove this insight. Try again.");
+      } finally {
+        setDeletingTaskId(null);
+      }
+    },
+    [onRefresh],
+  );
   const rows = useMemo(() => {
     const list = [...(tasks ?? [])];
     list.sort(
@@ -187,7 +306,10 @@ export default function InsightsTaskFeed({
   return (
     <section aria-label={title}>
       <SectionTitle>{title}</SectionTitle>
-      <Sub>Structured signals from your logs — read-only; edit or remove logs in Journal.</Sub>
+      <Sub>
+        Structured signals from your logs. Remove an insight with the trash
+        icon; your journal note stays.
+      </Sub>
       <Stack>
         {rows.map((t, index) => {
           const traits = listTraits(t);
@@ -214,6 +336,9 @@ export default function InsightsTaskFeed({
           });
           const dateAttr =
             journalSubmitted ?? t.created_at ?? t.createdAt ?? undefined;
+          const taskId = t.task_id ?? t.id;
+          const taskIdStr = taskId != null ? String(taskId) : "";
+          const canDelete = taskId != null;
           return (
             <Card
               key={`${t.task_id ?? t.id ?? "t"}-${index}`}
@@ -228,7 +353,20 @@ export default function InsightsTaskFeed({
                   <Pill>{String(category)}</Pill>
                 ) : null}
                 {tod != null ? <Pill>{String(tod)}</Pill> : null}
-                <Time dateTime={dateAttr}>{ts}</Time>
+                <MetaEnd>
+                  {canDelete ? (
+                    <IconDeleteBtn
+                      type="button"
+                      aria-label="Remove this insight"
+                      title="Remove this insight"
+                      disabled={deletingTaskId === taskIdStr}
+                      onClick={() => removeInsight(taskId)}
+                    >
+                      <TrashIcon />
+                    </IconDeleteBtn>
+                  ) : null}
+                  <Time dateTime={dateAttr}>{ts}</Time>
+                </MetaEnd>
               </MetaRow>
               <Body>{t.label}</Body>
               {ctx ? <Detail>{String(ctx)}</Detail> : null}

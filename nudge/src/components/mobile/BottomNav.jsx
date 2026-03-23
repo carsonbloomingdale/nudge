@@ -1,7 +1,6 @@
 import { NavLink } from "react-router-dom";
 import styled from "styled-components";
 import { useAppShell } from "../../context/AppShellContext";
-import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
 
 const LG = "1024px";
 
@@ -157,12 +156,13 @@ function IconSpark() {
   );
 }
 
-function IconTarget() {
+function IconBars() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="6" />
-      <circle cx="12" cy="12" r="2" />
+      <path d="M4 20h16" />
+      <path d="M8 20V10" />
+      <path d="M12 20V6" />
+      <path d="M16 20v-8" />
     </svg>
   );
 }
@@ -196,12 +196,9 @@ export default function BottomNav() {
           Home
           <Dot aria-hidden />
         </TabLink>
-        <TabLink to="/app/insights">
+        <TabLink to="/app/identity">
           <IconSpark />
-          <TabLabel>
-            <span>Insights</span>
-            <FeaturePreviewBadge compact />
-          </TabLabel>
+          <TabLabel>Identity</TabLabel>
           <Dot aria-hidden />
         </TabLink>
       </SidePair>
@@ -215,12 +212,9 @@ export default function BottomNav() {
         </FabButton>
       </FabWrap>
       <SidePair>
-        <TabLink to="/app/goals">
-          <IconTarget />
-          <TabLabel>
-            <span>Goals</span>
-            <FeaturePreviewBadge compact />
-          </TabLabel>
+        <TabLink to="/app/traits">
+          <IconBars />
+          <TabLabel>Traits</TabLabel>
           <Dot aria-hidden />
         </TabLink>
         <TabLink to="/app/account">

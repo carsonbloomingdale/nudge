@@ -51,6 +51,8 @@ const AppShellContext = createContext(null);
 
 export function AppShellProvider({ children }) {
   const [composerOpen, setComposerOpen] = useState(false);
+  /** Mobile Write / shared submit: "Saving journal…", "Generating insights…", etc. */
+  const [composerSubmitLabel, setComposerSubmitLabel] = useState(null);
   const [streakCount, setStreakCount] = useState(() => {
     return readStreakFromStorage().count;
   });
@@ -92,6 +94,8 @@ export function AppShellProvider({ children }) {
       composerOpen,
       openComposer,
       closeComposer,
+      composerSubmitLabel,
+      setComposerSubmitLabel,
       streakCount,
       recordStreakOnSubmit,
       refreshStreak,
@@ -102,6 +106,7 @@ export function AppShellProvider({ children }) {
       composerOpen,
       openComposer,
       closeComposer,
+      composerSubmitLabel,
       streakCount,
       recordStreakOnSubmit,
       refreshStreak,

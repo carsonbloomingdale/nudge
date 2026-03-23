@@ -1,13 +1,22 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import debounce from "debounce";
 import styled from "styled-components";
 import { Link } from "react-router-dom";
-import fetchTaskData from "../api/fetchTaskData";
+import fetchTaskData, {
+  insightSnapshotsFromEnriched,
+  regenerateJournalInsights,
+} from "../api/fetchTaskData";
 import fetchSuggestion from "../api/fetchSuggestion";
 import {
   fetchJournals,
   normalizeJournalsListPayload,
 } from "../api/journalApi";
+import {
+  fetchPersonalityTraitsChart,
+  fetchPinnedTraits,
+  pinTrait,
+  unpinTrait,
+} from "../api/analyticsApi";
 import { fetchAuthenticatedTasks } from "../api/taskApi";
 import PullToRefresh from "../components/PullToRefresh";
 import WelcomeSection from "../components/home/WelcomeSection";
@@ -86,6 +95,10 @@ const MobileSuggestLead = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
+function journalKey(j) {
+  return j.journal_id ?? j.journalId ?? j.id;
+}
+
 const MobileSuggestBtn = styled.button`
   width: 100%;
   height: 2.75rem;
@@ -122,7 +135,43 @@ export default function NudgeHomePage() {
     recordStreakOnSubmit,
     refreshStreak,
     streakCount,
+    closeComposer,
   } = useAppShell();
+
+  const mobileJournalTimelineRef = useRef(null);
+  const desktopJournalTimelineRef = useRef(null);
+
+  const scrollToJournalTimeline = useCallback(() => {
+    const isDesktop =
+      typeof window !== "undefined" &&
+      window.matchMedia(`(min-width: ${LG})`).matches;
+    const el = isDesktop
+      ? desktopJournalTimelineRef.current
+      : mobileJournalTimelineRef.current;
+    requestAnimationFrame(() => {
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+  const scrollToJournalCard = useCallback((journalId) => {
+    if (journalId == null) {
+      return;
+    }
+    const isDesktop =
+      typeof window !== "undefined" &&
+      window.matchMedia(`(min-width: ${LG})`).matches;
+    const root = isDesktop
+      ? desktopJournalTimelineRef.current
+      : mobileJournalTimelineRef.current;
+    const id = String(journalId);
+    requestAnimationFrame(() => {
+      const target = root?.querySelector?.(`[data-journal-id="${id}"]`);
+      if (target instanceof HTMLElement) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        scrollToJournalTimeline();
+      }
+    });
+  }, [scrollToJournalTimeline]);
 
   const [didToday, setDidToday] = useState();
   const [suggestion, setSuggestion] = useState();
@@ -135,12 +184,23 @@ export default function NudgeHomePage() {
   const [desktopAttachFiles, setDesktopAttachFiles] = useState([]);
   const [promptFieldKey, setPromptFieldKey] = useState(0);
   const [listRefreshing, setListRefreshing] = useState(false);
+  const [traitsChart, setTraitsChart] = useState(null);
+  const [traitsChartReady, setTraitsChartReady] = useState(false);
+  const [traitsChartError, setTraitsChartError] = useState(false);
+  const [journalInsightSession, setJournalInsightSession] = useState(null);
+  const [regeneratingInsightId, setRegeneratingInsightId] = useState(null);
+  const [pinnedTraits, setPinnedTraits] = useState([]);
+  const [pinBusyLabel, setPinBusyLabel] = useState(null);
 
   const reloadFeeds = useCallback(async () => {
+    setTraitsChartReady(false);
     refreshStreak();
-    const [tasksOutcome, journalsOutcome] = await Promise.allSettled([
+    const [tasksOutcome, journalsOutcome, chartOutcome, pinnedOutcome] =
+      await Promise.allSettled([
       fetchAuthenticatedTasks(),
       fetchJournals(),
+      fetchPersonalityTraitsChart(),
+      fetchPinnedTraits(),
     ]);
     if (tasksOutcome.status === "fulfilled") {
       setTaskList(tasksOutcome.value);
@@ -152,7 +212,80 @@ export default function NudgeHomePage() {
     } else {
       setJournalRecords([]);
     }
+    if (chartOutcome.status === "fulfilled") {
+      setTraitsChart(chartOutcome.value);
+      setTraitsChartError(false);
+    } else {
+      setTraitsChart(null);
+      setTraitsChartError(true);
+    }
+    if (pinnedOutcome.status === "fulfilled") {
+      setPinnedTraits(pinnedOutcome.value);
+    } else {
+      setPinnedTraits([]);
+    }
+    setTraitsChartReady(true);
   }, [refreshStreak]);
+
+  const pinnedTraitLookup = useMemo(() => {
+    const s = new Set();
+    for (const t of pinnedTraits ?? []) {
+      const key = String(t?.label ?? "").trim().toLowerCase();
+      if (key) {
+        s.add(key);
+      }
+    }
+    return s;
+  }, [pinnedTraits]);
+
+  const togglePinnedTrait = useCallback(
+    async (label) => {
+      const raw = String(label ?? "").trim();
+      const key = raw.toLowerCase();
+      if (!key || pinBusyLabel === key) {
+        return;
+      }
+      const isPinned = pinnedTraitLookup.has(key);
+      setPinBusyLabel(key);
+      if (isPinned) {
+        setPinnedTraits((prev) =>
+          (prev ?? []).filter((x) => String(x?.label ?? "").trim().toLowerCase() !== key),
+        );
+      } else {
+        setPinnedTraits((prev) => [
+          ...(prev ?? []),
+          { pin_id: 0, label: raw, created_at: "" },
+        ]);
+      }
+      try {
+        if (isPinned) {
+          const next = await unpinTrait(raw);
+          setPinnedTraits(next);
+        } else {
+          const pinned = await pinTrait(raw);
+          if (pinned) {
+            setPinnedTraits((prev) => {
+              const rest = (prev ?? []).filter(
+                (x) =>
+                  String(x?.label ?? "").trim().toLowerCase() !==
+                  pinned.label.trim().toLowerCase(),
+              );
+              return [...rest, pinned];
+            });
+          } else {
+            const all = await fetchPinnedTraits();
+            setPinnedTraits(all);
+          }
+        }
+      } catch {
+        const all = await fetchPinnedTraits().catch(() => []);
+        setPinnedTraits(all);
+      } finally {
+        setPinBusyLabel(null);
+      }
+    },
+    [pinnedTraitLookup, pinBusyLabel],
+  );
 
   const refreshFromBackend = useCallback(async () => {
     setListRefreshing(true);
@@ -164,34 +297,8 @@ export default function NudgeHomePage() {
   }, [reloadFeeds]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      refreshStreak();
-      try {
-        const list = await fetchAuthenticatedTasks();
-        if (!cancelled) {
-          setTaskList(list);
-        }
-      } catch {
-        if (!cancelled) {
-          setTaskList([]);
-        }
-      }
-      try {
-        const raw = await fetchJournals();
-        if (!cancelled) {
-          setJournalRecords(normalizeJournalsListPayload(raw));
-        }
-      } catch {
-        if (!cancelled) {
-          setJournalRecords([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshStreak]);
+    reloadFeeds();
+  }, [reloadFeeds]);
 
   const submitEntry = useCallback(
     async (rawText, options) => {
@@ -199,20 +306,93 @@ export default function NudgeHomePage() {
       if (!trimmed) {
         return;
       }
-      await fetchTaskData(trimmed, taskList, options);
-      recordStreakOnSubmit();
+      setFeedMode("journals");
+      closeComposer();
+      setJournalInsightSession({
+        journalId: null,
+        phase: "generating",
+        pendingNote: trimmed,
+      });
+      scrollToJournalTimeline();
+      let persistedJournalId = null;
       try {
-        await reloadFeeds();
+        await fetchTaskData(trimmed, taskList, {
+          ...options,
+          onPersistComplete: (jid, enriched, note) => {
+            if (jid != null && enriched != null) {
+              persistedJournalId = jid;
+              setJournalInsightSession({
+                journalId: jid,
+                phase: "complete",
+                previews: insightSnapshotsFromEnriched(enriched),
+                baselineNote: note,
+              });
+            } else {
+              setJournalInsightSession(null);
+            }
+          },
+        });
+        recordStreakOnSubmit();
+        try {
+          await reloadFeeds();
+          if (persistedJournalId != null) {
+            scrollToJournalCard(persistedJournalId);
+          }
+        } catch {
+          setTaskList((prev) => [...(prev ?? []), { label: trimmed }]);
+        }
       } catch {
-        setTaskList((prev) => [...(prev ?? []), { label: trimmed }]);
+        setJournalInsightSession(null);
       }
     },
-    [taskList, recordStreakOnSubmit, reloadFeeds],
+    [
+      taskList,
+      recordStreakOnSubmit,
+      reloadFeeds,
+      closeComposer,
+      scrollToJournalTimeline,
+      scrollToJournalCard,
+      setFeedMode,
+    ],
   );
 
   useEffect(() => {
     return registerJournalSubmit(submitEntry);
   }, [registerJournalSubmit, submitEntry]);
+
+  const dismissInsightPreview = useCallback(() => {
+    setJournalInsightSession(null);
+  }, []);
+
+  const regenerateInsightPreview = useCallback(
+    async (journalId) => {
+      const j = journalRecords.find(
+        (x) => String(journalKey(x)) === String(journalId),
+      );
+      const note = j?.note != null ? String(j.note).trim() : "";
+      if (!note) {
+        return;
+      }
+      setRegeneratingInsightId(journalId);
+      try {
+        const enriched = await regenerateJournalInsights(
+          journalId,
+          note,
+          taskList,
+        );
+        await reloadFeeds();
+        setJournalInsightSession({
+          journalId,
+          phase: "complete",
+          previews: insightSnapshotsFromEnriched(enriched),
+          baselineNote: note,
+        });
+      } finally {
+        setRegeneratingInsightId(null);
+      }
+    },
+    [journalRecords, taskList, reloadFeeds],
+  );
 
   const handleSubmit = useCallback(
     async (e) => {
@@ -221,34 +401,72 @@ export default function NudgeHomePage() {
       if (!trimmed) {
         return;
       }
-      await fetchTaskData(trimmed, taskList, {
-        files: desktopAttachFiles,
-      });
-      recordStreakOnSubmit();
-      try {
-        await reloadFeeds();
-      } catch {
-        setTaskList((prev) => [...(prev ?? []), { label: trimmed }]);
-      }
-      setDesktopAttachFiles([]);
-      setDidToday();
+      const submitText = trimmed;
+      setDidToday("");
       setPromptFieldKey((k) => k + 1);
+      setDesktopAttachFiles([]);
+      setFeedMode("journals");
+      setJournalInsightSession({
+        journalId: null,
+        phase: "generating",
+        pendingNote: submitText,
+      });
+      scrollToJournalTimeline();
+      let persistedJournalId = null;
+      try {
+        await fetchTaskData(submitText, taskList, {
+          files: desktopAttachFiles,
+          onPersistComplete: (jid, enriched, note) => {
+            if (jid != null && enriched != null) {
+              persistedJournalId = jid;
+              setJournalInsightSession({
+                journalId: jid,
+                phase: "complete",
+                previews: insightSnapshotsFromEnriched(enriched),
+                baselineNote: note,
+              });
+            } else {
+              setJournalInsightSession(null);
+            }
+          },
+        });
+        recordStreakOnSubmit();
+        try {
+          await reloadFeeds();
+          if (persistedJournalId != null) {
+            scrollToJournalCard(persistedJournalId);
+          }
+        } catch {
+          setTaskList((prev) => [...(prev ?? []), { label: submitText }]);
+        }
+      } catch {
+        setJournalInsightSession(null);
+      }
     },
-    [didToday, taskList, desktopAttachFiles, recordStreakOnSubmit, reloadFeeds],
+    [
+      didToday,
+      taskList,
+      desktopAttachFiles,
+      recordStreakOnSubmit,
+      reloadFeeds,
+      scrollToJournalTimeline,
+      scrollToJournalCard,
+      setFeedMode,
+    ],
   );
 
   const handleGetSuggestion = useCallback(async () => {
     setSuggestionLoading(true);
     setSuggestion(undefined);
     try {
-      const suggestionData = await fetchSuggestion(taskList);
+      const suggestionData = await fetchSuggestion();
       if (suggestionData) {
         setSuggestion(suggestionData);
       }
     } finally {
       setSuggestionLoading(false);
     }
-  }, [taskList]);
+  }, []);
 
   const handleChangeInput = useMemo(
     () =>
@@ -282,8 +500,8 @@ export default function NudgeHomePage() {
           Tap the terracotta{" "}
           <strong style={{ color: "hsl(var(--primary))" }}>Write</strong>{" "}
           button below to capture your day — or open{" "}
-          <InlineLink to="/app/insights">Insights</InlineLink> and{" "}
-          <InlineLink to="/app/goals">Goals</InlineLink> from the tabs.
+          <InlineLink to="/app/identity">Identity</InlineLink> and{" "}
+          <InlineLink to="/app/traits">Traits</InlineLink> from the tabs.
         </MobileWriteHint>
         <MobileSuggestCard className="animate-fade-up stagger-150">
           <MobileSuggestLead>
@@ -308,20 +526,27 @@ export default function NudgeHomePage() {
             />
           )}
         </MobileSuggestCard>
-        <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
-        {feedMode === "journals" ? (
-          <JournalFeed
-            journals={journalRecords}
-            onRefresh={refreshFromBackend}
-            title="Your log"
-          />
-        ) : (
-          <InsightsTaskFeed
-            tasks={taskList}
-            journals={journalRecords}
-            title="AI insights"
-          />
-        )}
+        <div ref={mobileJournalTimelineRef}>
+          <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
+          {feedMode === "journals" ? (
+            <JournalFeed
+              journals={journalRecords}
+              onRefresh={refreshFromBackend}
+              title="Your log"
+              insightSession={journalInsightSession}
+              onDismissInsightPreview={dismissInsightPreview}
+              onRegenerateInsightPreview={regenerateInsightPreview}
+              insightRegeneratingId={regeneratingInsightId}
+            />
+          ) : (
+            <InsightsTaskFeed
+              tasks={taskList}
+              journals={journalRecords}
+              title="AI insights"
+              onRefresh={refreshFromBackend}
+            />
+          )}
+        </div>
       </MobileStack>
 
       <DesktopMain>
@@ -337,24 +562,44 @@ export default function NudgeHomePage() {
             attachmentFiles={desktopAttachFiles}
             onAttachmentFilesChange={setDesktopAttachFiles}
           />
-          <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
-          {feedMode === "journals" ? (
-            <JournalFeed
-              journals={journalRecords}
-              onRefresh={refreshFromBackend}
-              title="Your log"
-            />
-          ) : (
-            <InsightsTaskFeed
-              tasks={taskList}
-              journals={journalRecords}
-              title="AI insights"
-            />
-          )}
+          <div ref={desktopJournalTimelineRef}>
+            <FeedModeToggle mode={feedMode} onModeChange={setFeedMode} />
+            {feedMode === "journals" ? (
+              <JournalFeed
+                journals={journalRecords}
+                onRefresh={refreshFromBackend}
+                title="Your log"
+                insightSession={journalInsightSession}
+                onDismissInsightPreview={dismissInsightPreview}
+                onRegenerateInsightPreview={regenerateInsightPreview}
+                insightRegeneratingId={regeneratingInsightId}
+              />
+            ) : (
+              <InsightsTaskFeed
+                tasks={taskList}
+                journals={journalRecords}
+                title="AI insights"
+                onRefresh={refreshFromBackend}
+              />
+            )}
+          </div>
         </DesktopLeft>
         <DesktopRight>
-          <IdentityRadar tasks={taskList} />
-          <TraitGrowthPanel tasks={taskList} />
+          <IdentityRadar
+            tasks={taskList}
+            analytics={traitsChart}
+            analyticsLoading={!traitsChartReady}
+            analyticsFailed={traitsChartError}
+          />
+          <TraitGrowthPanel
+            tasks={taskList}
+            analytics={traitsChart}
+            analyticsLoading={!traitsChartReady}
+            analyticsFailed={traitsChartError}
+            pinnedTraitLabels={pinnedTraits.map((x) => x.label)}
+            pinBusyLabel={pinBusyLabel}
+            onTogglePinTrait={togglePinnedTrait}
+          />
           <ActiveGoalsPanel />
         </DesktopRight>
       </DesktopMain>

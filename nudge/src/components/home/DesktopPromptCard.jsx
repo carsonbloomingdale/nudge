@@ -43,7 +43,7 @@ const Form = styled.form`
 
 const TextArea = styled.textarea`
   width: 100%;
-  min-height: 4.5rem;
+  min-height: 10rem;
   resize: vertical;
   padding: 0.75rem;
   border-radius: 0.5rem;
@@ -168,9 +168,14 @@ export default function DesktopPromptCard({
           key={fieldKey}
           name="didToday"
           onChange={onChangeDebounced}
+          onInput={(e) => {
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = `${Math.max(el.scrollHeight, 160)}px`;
+          }}
           placeholder="Write freely — a sentence is enough."
           aria-label="What you did today"
-          rows={3}
+          rows={6}
         />
         {typeof onAttachmentFilesChange === "function" ? (
           <JournalAttachmentPicker

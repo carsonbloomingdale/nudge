@@ -62,9 +62,15 @@ export function extractPersonalityTraits(task, listIndex = 0) {
   const arr = Array.isArray(raw) ? raw : [];
   const slugs = [];
   for (const x of arr) {
-    const slug = normalizeTraitSlug(
-      typeof x === "string" ? x : String(x ?? ""),
-    );
+    let text = "";
+    if (typeof x === "string") {
+      text = x;
+    } else if (x && typeof x === "object" && x.label != null) {
+      text = String(x.label);
+    } else {
+      text = String(x ?? "");
+    }
+    const slug = normalizeTraitSlug(text);
     if (slug) {
       slugs.push(slug);
     }

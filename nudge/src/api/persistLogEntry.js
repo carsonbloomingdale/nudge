@@ -58,18 +58,47 @@ export function mergeRawTextIntoLineItem(enriched, rawUserText) {
   if (text) {
     base.label = text;
   }
+
+  /** POST /tasks/ and journal line items: up to 5 trimmed strings (max 80 chars). */
+  if (Array.isArray(base.personality_traits)) {
+    const traits = base.personality_traits
+      .map((x) => {
+        if (typeof x === "string") {
+          return x.trim().slice(0, 80);
+        }
+        if (x && typeof x === "object" && x.label != null) {
+          return String(x.label).trim().slice(0, 80);
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .slice(0, 5);
+    if (traits.length > 0) {
+      base.personality_traits = traits;
+    } else {
+      delete base.personality_traits;
+    }
+  }
+
   return base;
 }
 
 /**
  * Persist enriched line item(s): prefer POST /api/journals/; fallback to legacy POST /tasks/ per row.
  * @param {Record<string, unknown>|Record<string, unknown>[]} enriched — one or many enriched tasks
- * @param {string} [rawUserText] — original user text for this log (fills missing `label`)
+ * @param {string} [rawUserText] — full journal note (fallback when `perLineFallbacks` omitted)
+ * @param {{ perLineFallbacks?: string[] }} [options] — one short string per row (split lines / batch order)
  */
-export async function persistEnrichedLineItems(enriched, rawUserText) {
+export async function persistEnrichedLineItems(enriched, rawUserText, options) {
   const rows = Array.isArray(enriched) ? enriched : [enriched];
-  const lineItems = rows.map((row) =>
-    mergeRawTextIntoLineItem(row, rawUserText ?? ""),
+  const fallbacks = options?.perLineFallbacks;
+  const lineItems = rows.map((row, i) =>
+    mergeRawTextIntoLineItem(
+      row,
+      fallbacks && fallbacks[i] != null
+        ? fallbacks[i]
+        : rawUserText ?? "",
+    ),
   );
 
   const trimmed = String(rawUserText ?? "").trim();

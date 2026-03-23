@@ -1,10 +1,21 @@
 import { useMemo } from "react";
 import styled from "styled-components";
-import { FeaturePreviewBadge } from "../ui/FeaturePreviewBadge";
+import ChartLoadingPlaceholder from "./ChartLoadingPlaceholder";
 import {
   aggregateTraitStatsFromTasks,
   DEFAULT_TRAIT_GROWTH_CAP,
 } from "./traitUtils";
+import { segmentsToGrowthRows } from "./personalityChartUtils";
+
+const MAX_VISIBLE_TRAITS = 6;
+const DISPLAY_TRAIT_VARS = [
+  "--trait-creative",
+  "--trait-social",
+  "--trait-analytical",
+  "--trait-adventurous",
+  "--trait-nurturing",
+  "--trait-disciplined",
+];
 
 const Wrap = styled.section``;
 
@@ -24,6 +35,17 @@ const Title = styled.h2`
   font-weight: 400;
   line-height: 1.25;
   color: hsl(var(--foreground));
+`;
+
+const Sub = styled.p`
+  margin: 0 0 1rem;
+  font-size: 12px;
+  line-height: 1.4;
+  color: hsl(var(--muted-foreground));
+
+  @media (max-width: 1023px) {
+    font-size: 13px;
+  }
 `;
 
 const Card = styled.div`
@@ -54,12 +76,55 @@ const Label = styled.span`
   font-size: 0.875rem;
   font-weight: 500;
   color: hsl(var(--foreground));
+
+  @media (max-width: 1023px) {
+    font-size: 0.95rem;
+  }
 `;
 
 const Meta = styled.span`
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   color: hsl(var(--muted-foreground));
+
+  @media (max-width: 1023px) {
+    font-size: 0.8125rem;
+  }
+`;
+
+const LabelRow = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+`;
+
+const PinBtn = styled.button`
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: hsl(var(--foreground));
+    background: hsl(var(--foreground) / 0.06);
+  }
+
+  &[data-pinned="true"] {
+    color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.12);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 const Track = styled.div`
@@ -88,52 +153,195 @@ const Empty = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
+const HiddenTraitsNote = styled.p`
+  margin: 0;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+`;
+
+function normalizeTraitLabel(s) {
+  return String(s ?? "").trim().toLowerCase();
+}
+
+function PinIcon({ pinned }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3Z"
+        fill={pinned ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /**
- * @param {{ tasks?: unknown[] }} props
+ * @param {{
+ *   tasks?: unknown[],
+ *   analytics?: import("../../api/analyticsApi").PersonalityTraitsChartResponse | null,
+ *   analyticsLoading?: boolean,
+ *   analyticsFailed?: boolean,
+ *   pinnedTraitLabels?: string[],
+ *   pinBusyLabel?: string | null,
+ *   onTogglePinTrait?: (label: string) => void,
+ * }} props
  */
-export default function TraitGrowthPanel({ tasks }) {
-  const { orderedTraits, hasData, maxCount, totalTraitMentions } = useMemo(
-    () => aggregateTraitStatsFromTasks(tasks, DEFAULT_TRAIT_GROWTH_CAP),
-    [tasks],
+export default function TraitGrowthPanel({
+  tasks,
+  analytics,
+  analyticsLoading,
+  analyticsFailed,
+  pinnedTraitLabels = [],
+  pinBusyLabel = null,
+  onTogglePinTrait,
+}) {
+  const viz = useMemo(() => {
+    if (analyticsLoading) {
+      return { kind: "loading" };
+    }
+    if (analytics && !analyticsFailed) {
+      const total = analytics.total_associations ?? 0;
+      const segs = analytics.segments ?? [];
+      if (total > 0 && segs.length > 0) {
+        return {
+          kind: "analytics",
+          rows: segmentsToGrowthRows(segs, DEFAULT_TRAIT_GROWTH_CAP),
+          chartMode: analytics.chart_mode,
+        };
+      }
+      return { kind: "empty_db" };
+    }
+    const agg = aggregateTraitStatsFromTasks(tasks, DEFAULT_TRAIT_GROWTH_CAP);
+    if (agg.hasData) {
+      const maxCount = agg.maxCount || 1;
+      return {
+        kind: "tasks",
+        rows: agg.orderedTraits.map((t) => ({
+          id: t.id,
+          label: t.label,
+          count: t.count,
+          sharePct:
+            agg.totalTraitMentions > 0
+              ? Math.round((t.count / agg.totalTraitMentions) * 100)
+              : 0,
+          barPct: Math.round((t.count / maxCount) * 100),
+          memberLabels: [],
+          cssVar: t.cssVar,
+          hsl: t.hsl,
+        })),
+      };
+    }
+    return { kind: "empty" };
+  }, [tasks, analytics, analyticsLoading, analyticsFailed]);
+
+  const subtitle =
+    viz.kind === "analytics"
+      ? viz.chartMode === "ai"
+        ? "From saved trait links — grouped with AI."
+        : "From saved trait links — one bar per distinct label."
+      : viz.kind === "tasks" && analyticsFailed
+        ? "Analytics unavailable — trait counts from your saved moments."
+        : null;
+  const allRows = useMemo(
+    () => (viz.kind === "analytics" || viz.kind === "tasks" ? viz.rows : []),
+    [viz],
+  );
+  const rows = useMemo(() => {
+    const pinned = [];
+    const others = [];
+    const pinnedSet = new Set((pinnedTraitLabels ?? []).map(normalizeTraitLabel));
+    for (const r of allRows) {
+      if (pinnedSet.has(normalizeTraitLabel(r.label))) {
+        pinned.push(r);
+      } else {
+        others.push(r);
+      }
+    }
+    const visible = [...pinned, ...others.slice(0, Math.max(0, MAX_VISIBLE_TRAITS - pinned.length))];
+    return visible.map((r, i) => ({ ...r, uiCssVar: DISPLAY_TRAIT_VARS[i % DISPLAY_TRAIT_VARS.length] }));
+  }, [allRows, pinnedTraitLabels]);
+  const hiddenTraitsCount = Math.max(0, allRows.length - rows.length);
+  const pinnedLookup = useMemo(
+    () => new Set((pinnedTraitLabels ?? []).map(normalizeTraitLabel)),
+    [pinnedTraitLabels],
   );
 
   return (
     <Wrap className="animate-fade-up stagger-350">
       <TitleRow>
         <Title>Trait growth</Title>
-        <FeaturePreviewBadge compact />
       </TitleRow>
+      {subtitle ? <Sub>{subtitle}</Sub> : null}
       <Card>
-        {!hasData ? (
+        {viz.kind === "loading" ? (
+          <ChartLoadingPlaceholder minHeight="10rem" label="Loading trait growth…" />
+        ) : null}
+        {viz.kind === "empty_db" ? (
+          <Empty>
+            No personality trait links stored yet. When enrich persists traits to
+            the database, they&apos;ll appear here.
+          </Empty>
+        ) : null}
+        {viz.kind === "empty" ? (
           <Empty>
             As you log moments, we tally how often each personality trait shows
             up — bars grow with repetition.
           </Empty>
-        ) : (
+        ) : null}
+        {viz.kind === "analytics" || viz.kind === "tasks" ? (
           <Stack>
-            {orderedTraits.map((t) => {
+            {rows.map((r) => {
               const pct =
-                maxCount > 0 ? Math.round((t.count / maxCount) * 100) : 0;
-              const share =
-                totalTraitMentions > 0
-                  ? Math.round((t.count / totalTraitMentions) * 100)
-                  : 0;
+                viz.kind === "analytics" ? r.sharePct : r.barPct ?? r.sharePct;
+              const tooltip =
+                r.memberLabels?.length > 0
+                  ? `Includes: ${r.memberLabels.join(", ")}`
+                  : undefined;
               return (
-                <Row key={t.id}>
+                <Row key={r.id} title={tooltip}>
                   <RowTop>
-                    <Label>{t.label}</Label>
+                    <LabelRow>
+                      <Label>{r.label}</Label>
+                      {typeof onTogglePinTrait === "function" ? (
+                        <PinBtn
+                          type="button"
+                          data-pinned={pinnedLookup.has(normalizeTraitLabel(r.label))}
+                          disabled={
+                            pinBusyLabel != null &&
+                            normalizeTraitLabel(pinBusyLabel) ===
+                              normalizeTraitLabel(r.label)
+                          }
+                          onClick={() => onTogglePinTrait(r.label)}
+                        >
+                          <PinIcon
+                            pinned={pinnedLookup.has(normalizeTraitLabel(r.label))}
+                          />
+                        </PinBtn>
+                      ) : null}
+                    </LabelRow>
                     <Meta className="tabular-nums">
-                      {t.count}× · {share}% of traits
+                      {r.count}× · {r.sharePct}% of total
                     </Meta>
                   </RowTop>
                   <Track>
-                    <Fill $pct={pct} $cssVar={t.cssVar} $hsl={t.hsl} />
+                    <Fill
+                      $pct={Math.min(100, pct)}
+                      $cssVar={r.uiCssVar ?? r.cssVar}
+                      $hsl={r.hsl}
+                    />
                   </Track>
                 </Row>
               );
             })}
+            {hiddenTraitsCount > 0 ? (
+              <HiddenTraitsNote>
+                +{hiddenTraitsCount} hidden {hiddenTraitsCount === 1 ? "trait" : "traits"}
+              </HiddenTraitsNote>
+            ) : null}
           </Stack>
-        )}
+        ) : null}
       </Card>
     </Wrap>
   );

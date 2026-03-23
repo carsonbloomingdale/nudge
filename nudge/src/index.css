@@ -41,6 +41,18 @@ body {
   color: hsl(var(--foreground));
 }
 
+/* iOS Safari (and several mobile browsers) zoom the whole page when a focused
+   input/textarea/select computes to font-size < 16px. Keep form controls at
+   least 16px on narrow viewports. !important wins over styled-components.
+   Viewport meta stays user-scalable — no maximum-scale hacks. */
+@media screen and (max-width: 1024px) {
+  textarea,
+  select,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="image"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="hidden"]) {
+    font-size: 16px !important;
+  }
+}
+
 h1,
 h2,
 h3 {

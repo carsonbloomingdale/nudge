@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import styled from "styled-components";
 
-const MAX_FILES = 8;
+const DEFAULT_MAX_FILES = 8;
 
 const Row = styled.div`
   display: flex;
@@ -128,13 +128,15 @@ function ThumbPreview({ file }) {
 }
 
 /**
- * @param {{ files: File[], onFilesChange: (files: File[]) => void, tight?: boolean }} props
+ * @param {{ files: File[], onFilesChange: (files: File[]) => void, tight?: boolean, maxFiles?: number }} props
  */
 export default function JournalAttachmentPicker({
   files,
   onFilesChange,
   tight = false,
+  maxFiles = DEFAULT_MAX_FILES,
 }) {
+  const cap = Math.min(DEFAULT_MAX_FILES, Math.max(0, maxFiles));
   const inputRef = useRef(null);
   const reactId = useId();
   const inputId = `journal-attach-${reactId}`;
@@ -145,7 +147,7 @@ export default function JournalAttachmentPicker({
         return;
       }
       const next = [...files];
-      for (let i = 0; i < incoming.length && next.length < MAX_FILES; i += 1) {
+      for (let i = 0; i < incoming.length && next.length < cap; i += 1) {
         const f = incoming[i];
         if (f && typeof f.type === "string" && f.type.startsWith("image/")) {
           next.push(f);
@@ -153,7 +155,7 @@ export default function JournalAttachmentPicker({
       }
       onFilesChange(next);
     },
-    [files, onFilesChange],
+    [files, onFilesChange, cap],
   );
 
   const onInputChange = useCallback(
@@ -191,7 +193,7 @@ export default function JournalAttachmentPicker({
         <AddBtn
           type="button"
           onClick={() => inputRef.current?.click()}
-          disabled={files.length >= MAX_FILES}
+          disabled={files.length >= cap}
         >
           {files.length ? "Add more" : "Add photos"}
         </AddBtn>

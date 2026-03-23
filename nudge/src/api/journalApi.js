@@ -118,15 +118,24 @@ export async function fetchJournal(journalId) {
 }
 
 /**
+ * Partial update (note, items, etc. — depends on backend).
  * @param {string|number} journalId
- * @param {{ note: string|null }} body — use `note: null` to clear
+ * @param {Record<string, unknown>} body
  */
-export async function patchJournalNote(journalId, body) {
+export async function patchJournal(journalId, body) {
   const { data } = await http.patch(
     `/api/journals/${encodeURIComponent(String(journalId))}`,
     body,
   );
   return data;
+}
+
+/**
+ * @param {string|number} journalId
+ * @param {{ note: string|null }} body — use `note: null` to clear
+ */
+export async function patchJournalNote(journalId, body) {
+  return patchJournal(journalId, body);
 }
 
 export async function deleteJournal(journalId) {
@@ -155,6 +164,17 @@ export async function completeJournalAttachment(journalId, attachmentId, body) {
     body ?? {},
   );
   return data;
+}
+
+/**
+ * Remove an attachment from a journal (e.g. photo).
+ * @param {string|number} journalId
+ * @param {string|number} attachmentId
+ */
+export async function deleteJournalAttachment(journalId, attachmentId) {
+  await http.delete(
+    `/api/journals/${encodeURIComponent(String(journalId))}/attachments/${encodeURIComponent(String(attachmentId))}`,
+  );
 }
 
 /**
