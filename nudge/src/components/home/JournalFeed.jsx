@@ -48,6 +48,42 @@ const Top = styled.div`
   margin-bottom: 0.5rem;
 `;
 
+const TopActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+`;
+
+const IconActionBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.95rem;
+  height: 1.95rem;
+  padding: 0;
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 0.45rem;
+  background: hsl(var(--background) / 0.72);
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+
+  &:hover:not(:disabled) {
+    background: hsl(var(--foreground) / 0.06);
+    color: hsl(var(--foreground));
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.35);
+    outline-offset: 2px;
+  }
+`;
+
 const Time = styled.time`
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
@@ -146,15 +182,6 @@ const InsightMeta = styled.p`
   }
 `;
 
-const Actions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding-top: 0.65rem;
-  border-top: 1px solid hsl(var(--border) / 0.45);
-`;
-
 const Btn = styled.button`
   height: 2rem;
   padding: 0 0.75rem;
@@ -180,16 +207,6 @@ const Btn = styled.button`
   &:focus-visible {
     outline: 2px solid hsl(var(--primary) / 0.35);
     outline-offset: 2px;
-  }
-`;
-
-const DangerBtn = styled(Btn)`
-  border-color: hsl(var(--border));
-  color: hsl(var(--muted-foreground));
-
-  &:hover {
-    color: hsl(var(--foreground));
-    background: hsl(var(--foreground) / 0.06);
   }
 `;
 
@@ -483,6 +500,79 @@ const GhostBtn = styled.button`
   }
 `;
 
+const ConfirmOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: hsl(var(--foreground) / 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+`;
+
+const ConfirmDialog = styled.div`
+  width: min(28rem, 100%);
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--card));
+  box-shadow: 0 12px 36px hsl(var(--foreground) / 0.24);
+  padding: 1rem;
+`;
+
+const ConfirmTitle = styled.h3`
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+`;
+
+const ConfirmText = styled.p`
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+`;
+
+const ConfirmActions = styled.div`
+  margin-top: 0.9rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+`;
+
+const ConfirmDeleteBtn = styled(Btn)`
+  border-color: hsl(var(--border) / 0.8);
+  background: hsl(0 62% 44%);
+  color: white;
+
+  &:hover {
+    background: hsl(0 62% 40%);
+  }
+`;
+
+const ConfirmCancelBtn = styled(Btn)``;
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="m16.5 3.5 4 4L7 21l-4 1 1-4L16.5 3.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function journalKey(j) {
   return j.journal_id ?? j.journalId ?? j.id;
 }
@@ -574,6 +664,7 @@ export default function JournalFeed({
   const [busyId, setBusyId] = useState(null);
   const [editShellMinHeight, setEditShellMinHeight] = useState(null);
   const [pendingAttachFiles, setPendingAttachFiles] = useState([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   const startEdit = useCallback((j, cardEl) => {
     const id = journalKey(j);
@@ -623,24 +714,22 @@ export default function JournalFeed({
     }
   }, [editingId, draftNote, pendingAttachFiles, cancelEdit, onRefresh]);
 
-  const remove = useCallback(
-    async (id) => {
-      if (
-        !window.confirm(
-          "Delete this log and its entries? This cannot be undone.",
-        )
-      ) {
+  const confirmRemove = useCallback(
+    async () => {
+      const id = deleteConfirmId;
+      if (id == null) {
         return;
       }
       setBusyId(id);
       try {
         await deleteJournal(id);
+        setDeleteConfirmId(null);
         await onRefresh();
       } finally {
         setBusyId(null);
       }
     },
-    [onRefresh],
+    [deleteConfirmId, onRefresh],
   );
 
   const removeAttachment = useCallback(
@@ -673,8 +762,8 @@ export default function JournalFeed({
       <section aria-label={title}>
         <SectionTitle>{title}</SectionTitle>
         <Sub>
-          Hover your entry to see “Click to edit,” then click the text to change
-          it. Hover a photo to remove it.
+          Click the entry text or use the pencil icon to edit. Use the trash icon
+          to remove a log and its linked insights.
         </Sub>
         {showPendingCard ? (
           <Stack>
@@ -700,8 +789,8 @@ export default function JournalFeed({
     <section aria-label={title}>
       <SectionTitle>{title}</SectionTitle>
       <Sub>
-        Hover your entry to see “Click to edit,” then click the text to change
-        it. Hover a photo to remove it.
+        Click the entry text or use the pencil icon to edit. Use the trash icon
+        to remove a log and its linked insights.
       </Sub>
       <Stack>
         {showPendingCard ? (
@@ -751,6 +840,31 @@ export default function JournalFeed({
             >
               <Top>
                 <Time dateTime={iso}>{ts}</Time>
+                {!isEditing ? (
+                  <TopActions>
+                    <IconActionBtn
+                      type="button"
+                      aria-label="Edit log"
+                      title="Edit log"
+                      disabled={busy}
+                      onClick={(e) => {
+                        const card = e.currentTarget.closest("article");
+                        startEdit(j, card);
+                      }}
+                    >
+                      <PencilIcon />
+                    </IconActionBtn>
+                    <IconActionBtn
+                      type="button"
+                      aria-label="Delete log"
+                      title="Delete log"
+                      disabled={busy}
+                      onClick={() => setDeleteConfirmId(id)}
+                    >
+                      <TrashIcon />
+                    </IconActionBtn>
+                  </TopActions>
+                ) : null}
               </Top>
               {isEditing ? (
                 <EditShell
@@ -899,15 +1013,6 @@ export default function JournalFeed({
                       })}
                     </AttachRow>
                   ) : null}
-                  <Actions>
-                    <DangerBtn
-                      type="button"
-                      onClick={() => remove(id)}
-                      disabled={busy}
-                    >
-                      {busy ? "…" : "Delete log"}
-                    </DangerBtn>
-                  </Actions>
                 </>
               )}
               {insightMatch &&
@@ -977,6 +1082,33 @@ export default function JournalFeed({
           );
         })}
       </Stack>
+      {deleteConfirmId != null ? (
+        <ConfirmOverlay role="dialog" aria-modal="true" aria-label="Confirm delete log">
+          <ConfirmDialog>
+            <ConfirmTitle>Delete this log?</ConfirmTitle>
+            <ConfirmText>
+              This removes the journal entry and any linked insight data generated from
+              it. This action cannot be undone.
+            </ConfirmText>
+            <ConfirmActions>
+              <ConfirmCancelBtn
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={busyId === deleteConfirmId}
+              >
+                Cancel
+              </ConfirmCancelBtn>
+              <ConfirmDeleteBtn
+                type="button"
+                onClick={confirmRemove}
+                disabled={busyId === deleteConfirmId}
+              >
+                {busyId === deleteConfirmId ? "Deleting…" : "Delete"}
+              </ConfirmDeleteBtn>
+            </ConfirmActions>
+          </ConfirmDialog>
+        </ConfirmOverlay>
+      ) : null}
     </section>
   );
 }

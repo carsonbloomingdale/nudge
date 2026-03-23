@@ -2,44 +2,59 @@ import styled from "styled-components";
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 1rem;
 
   @media (min-width: 640px) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem;
+    margin-bottom: 2rem;
   }
 `;
 
 const Card = styled.div`
   border-radius: 0.75rem;
-  padding: 1rem;
+  padding: 0.6rem 0.5rem;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border) / 0.5);
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
-  min-height: 4.5rem;
+  min-height: 0;
+
+  @media (min-width: 640px) {
+    padding: 1rem;
+    min-height: 4.5rem;
+  }
 `;
 
 const IconRow = styled.div`
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin-bottom: 0.35rem;
-  font-size: 0.75rem;
+  margin-bottom: 0.2rem;
+  font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: hsl(var(--muted-foreground));
+
+  @media (min-width: 640px) {
+    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
+  }
 `;
 
 const Value = styled.div`
   font-family: var(--font-display), serif;
-  font-size: 1.5rem;
+  font-size: 1.12rem;
   line-height: 1.1;
   font-weight: 400;
   color: hsl(var(--foreground));
   font-variant-numeric: tabular-nums;
+
+  @media (min-width: 640px) {
+    font-size: 1.5rem;
+  }
 `;
 
 function IconFlame() {
