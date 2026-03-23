@@ -95,6 +95,13 @@ const MobileSuggestLead = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
+const DesktopNudgeCard = styled.section`
+  border-radius: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  background: hsl(var(--primary) / 0.06);
+  border: 1px solid hsl(var(--border) / 0.45);
+`;
+
 function journalKey(j) {
   return j.journal_id ?? j.journalId ?? j.id;
 }
@@ -136,6 +143,13 @@ const TimelinePanel = styled.section`
   border: 1px solid hsl(var(--border) / 0.5);
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 `;
+
+const NUDGE_PROMPTS = [
+  "What would feel like a gentle nudge right now?",
+  "What is one small step I can take today?",
+  "Where should I place my energy next?",
+  "What would future me thank me for today?",
+];
 
 export default function NudgeHomePage() {
   const {
@@ -199,6 +213,9 @@ export default function NudgeHomePage() {
   const [regeneratingInsightId, setRegeneratingInsightId] = useState(null);
   const [pinnedTraits, setPinnedTraits] = useState([]);
   const [pinBusyLabel, setPinBusyLabel] = useState(null);
+  const [nudgePromptIndex, setNudgePromptIndex] = useState(
+    () => new Date().getDate() % NUDGE_PROMPTS.length,
+  );
 
   const reloadFeeds = useCallback(async () => {
     setTraitsChartReady(false);
@@ -466,6 +483,7 @@ export default function NudgeHomePage() {
   const handleGetSuggestion = useCallback(async () => {
     setSuggestionLoading(true);
     setSuggestion(undefined);
+    setNudgePromptIndex((i) => (i + 1) % NUDGE_PROMPTS.length);
     try {
       const suggestionData = await fetchSuggestion();
       if (suggestionData) {
@@ -486,6 +504,7 @@ export default function NudgeHomePage() {
 
   const totalMoments = taskList?.length ?? 0;
   const weekSlice = Math.min(totalMoments, 7);
+  const hasInsightSource = (taskList?.length ?? 0) > 0 || journalRecords.length > 0;
 
   return (
     <PullToRefresh
@@ -513,15 +532,15 @@ export default function NudgeHomePage() {
         </MobileWriteHint>
         <MobileSuggestCard className="animate-fade-up stagger-150">
           <MobileSuggestLead>
-            Stuck? Ask for a gentle nudge based on what you&apos;ve logged
-            lately.
+            Need a little nudge? I can generate one based on what you&apos;ve
+            logged lately.
           </MobileSuggestLead>
           <MobileSuggestBtn
             type="button"
             onClick={handleGetSuggestion}
             disabled={suggestionLoading}
           >
-            {suggestionLoading ? "Thinking…" : "What should I do?"}
+            {suggestionLoading ? "Thinking…" : NUDGE_PROMPTS[nudgePromptIndex]}
           </MobileSuggestBtn>
           {suggestionLoading ? (
             <SuggestionLoading />
@@ -559,14 +578,35 @@ export default function NudgeHomePage() {
 
       <DesktopMain>
         <DesktopLeft>
+          {hasInsightSource ? (
+            <DesktopNudgeCard className="animate-fade-up stagger-150">
+              <MobileSuggestLead>
+                Need a little nudge? I can generate one based on what you&apos;ve
+                logged lately.
+              </MobileSuggestLead>
+              <MobileSuggestBtn
+                type="button"
+                onClick={handleGetSuggestion}
+                disabled={suggestionLoading}
+              >
+                {suggestionLoading ? "Thinking…" : NUDGE_PROMPTS[nudgePromptIndex]}
+              </MobileSuggestBtn>
+              {suggestionLoading ? (
+                <SuggestionLoading />
+              ) : (
+                <Suggestion
+                  setSuggestion={setSuggestion}
+                  suggestion={suggestion?.reccomendedTask}
+                  context={suggestion?.context}
+                  className="animate-fade-up stagger-100"
+                />
+              )}
+            </DesktopNudgeCard>
+          ) : null}
           <DesktopPromptCard
             fieldKey={promptFieldKey}
             onSubmit={handleSubmit}
             onChangeDebounced={handleChangeInput}
-            onGetSuggestion={handleGetSuggestion}
-            suggestion={suggestion}
-            setSuggestion={setSuggestion}
-            suggestionLoading={suggestionLoading}
             attachmentFiles={desktopAttachFiles}
             onAttachmentFilesChange={setDesktopAttachFiles}
           />

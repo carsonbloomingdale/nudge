@@ -1,7 +1,5 @@
 import styled from "styled-components";
 import JournalAttachmentPicker from "../journal/JournalAttachmentPicker";
-import Suggestion from "../Suggestion";
-import SuggestionLoading from "../SuggestionLoading";
 
 const Card = styled.section`
   border-radius: 0.75rem;
@@ -67,27 +65,36 @@ const TextArea = styled.textarea`
 
 const Actions = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem;
+  justify-content: flex-end;
+  margin-top: 0.15rem;
 `;
 
 const PrimaryBtn = styled.button`
-  height: 2.5rem;
-  padding: 0 1.15rem;
+  height: 2.2rem;
+  padding: 0 0.95rem;
   border: none;
   border-radius: 0.5rem;
-  font-size: 15px;
+  font-size: 0.875rem;
   font-family: var(--font-sans), sans-serif;
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  background: hsl(var(--primary));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.92) 0%,
+    hsl(var(--primary) / 0.78) 100%
+  );
   color: white;
-  box-shadow: 0 4px 14px hsl(var(--primary) / 0.2);
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  box-shadow:
+    inset 0 1px 0 hsl(var(--background) / 0.22),
+    0 2px 10px hsl(var(--primary) / 0.18);
+  transition: box-shadow 200ms ease, transform 200ms ease, filter 200ms ease;
 
   &:hover {
-    box-shadow: 0 6px 20px hsl(var(--primary) / 0.25);
+    filter: saturate(1.04);
+    box-shadow:
+      inset 0 1px 0 hsl(var(--background) / 0.24),
+      0 5px 16px hsl(var(--primary) / 0.23);
   }
 
   &:active {
@@ -96,34 +103,6 @@ const PrimaryBtn = styled.button`
 
   &:disabled {
     opacity: 0.55;
-    cursor: not-allowed;
-    transform: none;
-  }
-`;
-
-const SecondaryBtn = styled.button`
-  height: 2.5rem;
-  padding: 0 1rem;
-  border: 1px solid hsl(var(--border) / 0.5);
-  border-radius: 0.5rem;
-  font-size: 15px;
-  font-family: var(--font-sans), sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  background: hsl(var(--card) / 0.9);
-  color: hsl(var(--foreground));
-  transition: box-shadow 300ms ease, transform 200ms ease;
-
-  &:hover {
-    box-shadow: 0 2px 10px hsl(var(--foreground) / 0.06);
-  }
-
-  &:active {
-    transform: scale(0.97);
-  }
-
-  &:disabled {
-    opacity: 0.65;
     cursor: not-allowed;
     transform: none;
   }
@@ -147,10 +126,6 @@ export default function DesktopPromptCard({
   fieldKey = 0,
   onSubmit,
   onChangeDebounced,
-  onGetSuggestion,
-  suggestion,
-  setSuggestion,
-  suggestionLoading,
   attachmentFiles = [],
   onAttachmentFilesChange,
 }) {
@@ -158,10 +133,10 @@ export default function DesktopPromptCard({
     <Card className="animate-fade-up stagger-200">
       <HeadRow>
         <SparkleIcon />
-        <Heading>Today&apos;s prompt</Heading>
+        <Heading>Your nudge space</Heading>
       </HeadRow>
       <PromptLine>
-        What did you do today that you&apos;d actually want to remember?
+        What felt meaningful today, and what small nudge would help next?
       </PromptLine>
       <Form onSubmit={onSubmit}>
         <TextArea
@@ -184,28 +159,9 @@ export default function DesktopPromptCard({
           />
         ) : null}
         <Actions>
-          <PrimaryBtn type="submit">Save reflection</PrimaryBtn>
-          <SecondaryBtn
-            type="button"
-            onClick={onGetSuggestion}
-            disabled={suggestionLoading}
-          >
-            {suggestionLoading ? "Thinking…" : "What should I do?"}
-          </SecondaryBtn>
+          <PrimaryBtn type="submit">Save and generate insights</PrimaryBtn>
         </Actions>
       </Form>
-      <div style={{ marginTop: "1rem" }}>
-        {suggestionLoading ? (
-          <SuggestionLoading />
-        ) : (
-          <Suggestion
-            setSuggestion={setSuggestion}
-            suggestion={suggestion?.reccomendedTask}
-            context={suggestion?.context}
-            className="animate-fade-up stagger-100"
-          />
-        )}
-      </div>
     </Card>
   );
 }

@@ -12,6 +12,26 @@ const SectionTitle = styled.h2`
   color: hsl(var(--foreground));
 `;
 
+const TitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const AiBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+`;
+
 const Sub = styled.p`
   margin: 0 0 1rem;
   font-size: 13px;
@@ -229,6 +249,17 @@ function TrashIcon() {
   );
 }
 
+function SparkleIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 2l1.8 4.9L19 8.7l-4 3.1L16.2 17 12 14.2 7.8 17 9 11.8 5 8.7l5.2-1.8L12 2Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function insightSortTimeMs(t, journalTimeById) {
   const jid = t.journal_id ?? t.journalId;
   if (jid != null) {
@@ -297,7 +328,13 @@ export default function InsightsTaskFeed({
   if (!rows.length) {
     return (
       <section aria-label={title}>
-        <SectionTitle>{title}</SectionTitle>
+        <TitleRow>
+          <SectionTitle>{title}</SectionTitle>
+          <AiBadge>
+            <SparkleIcon />
+            AI
+          </AiBadge>
+        </TitleRow>
         <Sub>Structured signals from your logs (sentiment, themes, traits).</Sub>
         <Empty className="animate-fade-up stagger-0">
           Nothing parsed yet. Add a journal entry and enrichment will fill this
@@ -309,7 +346,13 @@ export default function InsightsTaskFeed({
 
   return (
     <section aria-label={title}>
-      <SectionTitle>{title}</SectionTitle>
+      <TitleRow>
+        <SectionTitle>{title}</SectionTitle>
+        <AiBadge>
+          <SparkleIcon />
+          AI
+        </AiBadge>
+      </TitleRow>
       <Sub>
         Structured signals from your logs. Remove an insight with the trash
         icon; your journal note stays.
