@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -14,6 +15,7 @@ import SettingsPage from "./pages/SettingsPage";
 import IdentityMapPage from "./pages/IdentityMapPage";
 import TraitGrowthPage from "./pages/TraitGrowthPage";
 import TermsPage from "./pages/TermsPage";
+import { initUiAccentFromStorage } from "./theme/uiAccent";
 
 function RootRedirect() {
   const { isAuthenticated, isRestoring } = useAuth();
@@ -76,6 +78,10 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initUiAccentFromStorage();
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

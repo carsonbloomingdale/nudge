@@ -116,11 +116,34 @@ const EntryTrigger = styled.button`
 `;
 
 /** Enriched line context (task) — secondary to journal note */
+const InsightMetaWrap = styled.div`
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.7rem 0.65rem;
+  border-radius: 0.45rem;
+  border: 1px solid hsl(var(--border) / 0.45);
+  background: hsl(var(--muted) / 0.22);
+`;
+
+const InsightMetaTitle = styled.p`
+  margin: 0 0 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+`;
+
 const InsightMeta = styled.p`
-  margin: 0 0 0.65rem;
+  margin: 0;
+  padding-left: 0.55rem;
+  border-left: 2px solid hsl(var(--border) / 0.65);
   font-size: 13px;
   line-height: 1.5;
   color: hsl(var(--muted-foreground));
+
+  & + & {
+    margin-top: 0.4rem;
+  }
 `;
 
 const Actions = styled.div`
@@ -823,19 +846,22 @@ export default function JournalFeed({
                       })()}
                     </EntryTrigger>
                   </EntryBlock>
-                  {hasJournalNoteField(j) && items.length > 0
-                    ? items.map((line, i) => {
+                  {hasJournalNoteField(j) && items.length > 0 ? (
+                    <InsightMetaWrap>
+                      <InsightMetaTitle>Extracted insights</InsightMetaTitle>
+                      {items.map((line, i) => {
                         const ctx = lineEntryText(line);
                         if (!ctx || ctx.trim() === String(j.note).trim()) {
                           return null;
                         }
                         return (
                           <InsightMeta key={line.task_id ?? line.id ?? i}>
-                            Insight: {ctx}
+                            {ctx}
                           </InsightMeta>
                         );
-                      })
-                    : null}
+                      })}
+                    </InsightMetaWrap>
+                  ) : null}
                   {imageAtts.length > 0 ? (
                     <AttachRow>
                       {imageAtts.map((att) => {

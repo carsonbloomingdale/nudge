@@ -97,12 +97,7 @@ const Dot = styled.span`
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: ${(p) =>
-    p.$hsl
-      ? `hsl(${p.$hsl})`
-      : p.$cssVar
-        ? `hsl(var(${p.$cssVar}))`
-        : "hsl(var(--primary))"};
+  background: ${(p) => p.$fill || "hsl(var(--primary))"};
 `;
 
 const Empty = styled.p`
@@ -376,7 +371,7 @@ export default function IdentityRadar({
             <Legend>
               {displayedTraits.map((t) => (
                 <LegendItem key={t.id}>
-                  <Dot $cssVar={t.uiCssVar ?? t.cssVar} $hsl={t.hsl} />
+                  <Dot $fill={fillForTrait(t)} />
                   {t.label}
                 </LegendItem>
               ))}
