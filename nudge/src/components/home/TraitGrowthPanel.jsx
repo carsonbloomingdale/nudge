@@ -37,6 +37,13 @@ const Title = styled.h2`
   color: hsl(var(--foreground));
 `;
 
+const Context = styled.p`
+  margin: -0.45rem 0 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: hsl(var(--muted-foreground));
+`;
+
 const Sub = styled.p`
   margin: 0 0 1rem;
   font-size: 12px;
@@ -252,12 +259,29 @@ export default function TraitGrowthPanel({
     const pinned = [];
     const others = [];
     const pinnedSet = new Set((pinnedTraitLabels ?? []).map(normalizeTraitLabel));
+    const seenPinned = new Set();
     for (const r of allRows) {
-      if (pinnedSet.has(normalizeTraitLabel(r.label))) {
+      const key = normalizeTraitLabel(r.label);
+      if (pinnedSet.has(key)) {
         pinned.push(r);
+        seenPinned.add(key);
       } else {
         others.push(r);
       }
+    }
+    for (const label of pinnedTraitLabels ?? []) {
+      const key = normalizeTraitLabel(label);
+      if (!key || seenPinned.has(key)) {
+        continue;
+      }
+      pinned.push({
+        id: `pinned-missing-${key}`,
+        label: String(label).trim(),
+        count: 0,
+        sharePct: 0,
+        barPct: 0,
+        memberLabels: [],
+      });
     }
     const visible = [...pinned, ...others.slice(0, Math.max(0, MAX_VISIBLE_TRAITS - pinned.length))];
     return visible.map((r, i) => ({ ...r, uiCssVar: DISPLAY_TRAIT_VARS[i % DISPLAY_TRAIT_VARS.length] }));
@@ -273,6 +297,9 @@ export default function TraitGrowthPanel({
       <TitleRow>
         <Title>Trait growth</Title>
       </TitleRow>
+      <Context>
+        Longer-term personality patterns that emerge over months of logged moments.
+      </Context>
       {subtitle ? <Sub>{subtitle}</Sub> : null}
       <Card>
         {viz.kind === "loading" ? (

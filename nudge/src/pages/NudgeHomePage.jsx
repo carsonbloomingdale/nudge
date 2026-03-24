@@ -13,9 +13,15 @@ import {
 } from "../api/journalApi";
 import {
   fetchPersonalityTraitsChart,
+  fetchGrowthGoalSuggestions,
+  fetchPinnedGrowthGoals,
+  pinGrowthGoal,
+  unpinGrowthGoal,
   fetchPinnedTraits,
   pinTrait,
   unpinTrait,
+  fetchTraitsActivityTotals,
+  fetchGrowthGoalsActivityTotals,
 } from "../api/analyticsApi";
 import { fetchAuthenticatedTasks } from "../api/taskApi";
 import PullToRefresh from "../components/PullToRefresh";
@@ -30,6 +36,7 @@ import SuggestionLoading from "../components/SuggestionLoading";
 import IdentityRadar from "../components/home/IdentityRadar";
 import TraitGrowthPanel from "../components/home/TraitGrowthPanel";
 import ActiveGoalsPanel from "../components/home/ActiveGoalsPanel";
+import ActivityHeatmap from "../components/analytics/ActivityHeatmap";
 import { useAppShell } from "../context/AppShellContext";
 
 const LG = "1024px";
@@ -144,12 +151,41 @@ const TimelinePanel = styled.section`
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 `;
 
+const TopMapPanel = styled.section`
+  margin: 0 0 1rem;
+`;
+
+const MapModeRow = styled.div`
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+`;
+
+const MapModeBtn = styled.button`
+  border: 1px solid ${(p) => (p.$active ? "hsl(var(--primary) / 0.45)" : "hsl(var(--border) / 0.7)")};
+  background: ${(p) => (p.$active ? "hsl(var(--primary) / 0.14)" : "hsl(var(--card))")};
+  color: ${(p) => (p.$active ? "hsl(var(--primary))" : "hsl(var(--foreground))")};
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+
+  &:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.35);
+    outline-offset: 2px;
+  }
+`;
+
 const NUDGE_PROMPTS = [
   "What would feel like a gentle nudge right now?",
   "What is one small step I can take today?",
   "Where should I place my energy next?",
   "What would future me thank me for today?",
 ];
+
+const HOME_MAP_OPEN_STORAGE_KEY = "nudge_home_map_open";
 
 export default function NudgeHomePage() {
   const {
@@ -213,19 +249,56 @@ export default function NudgeHomePage() {
   const [regeneratingInsightId, setRegeneratingInsightId] = useState(null);
   const [pinnedTraits, setPinnedTraits] = useState([]);
   const [pinBusyLabel, setPinBusyLabel] = useState(null);
+  const [goalSuggestions, setGoalSuggestions] = useState([]);
+  const [pinnedGoals, setPinnedGoals] = useState([]);
+  const [goalDismissedIds, setGoalDismissedIds] = useState([]);
+  const [goalBusyId, setGoalBusyId] = useState(null);
+  const [goalsLoading, setGoalsLoading] = useState(false);
+  const [goalsFailed, setGoalsFailed] = useState(false);
+  const [isOffline, setIsOffline] = useState(
+    typeof navigator !== "undefined" ? !navigator.onLine : false,
+  );
   const [nudgePromptIndex, setNudgePromptIndex] = useState(
     () => new Date().getDate() % NUDGE_PROMPTS.length,
   );
+  const [statsMode, setStatsMode] = useState("goals");
+  const [topMapOpen, setTopMapOpen] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    try {
+      return localStorage.getItem(HOME_MAP_OPEN_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [topMapGrain, setTopMapGrain] = useState("day");
+  const [topMapBuckets, setTopMapBuckets] = useState([]);
+  const [topMapLoading, setTopMapLoading] = useState(false);
+  const [topMapError, setTopMapError] = useState(false);
+  const topMapCacheRef = useRef(new Map());
+
+  const rangeFor = useCallback((grain) => {
+    const now = new Date();
+    const toDate = now.toISOString().slice(0, 10);
+    const days = grain === "month" ? 365 : grain === "week" ? 365 : 120;
+    const from = new Date(now);
+    from.setDate(now.getDate() - days);
+    const fromDate = from.toISOString().slice(0, 10);
+    return { fromDate, toDate };
+  }, []);
+
+  const dayRange = useMemo(() => rangeFor("day"), [rangeFor]);
+  const topMapRange = useMemo(() => rangeFor(topMapGrain), [rangeFor, topMapGrain]);
+
 
   const reloadFeeds = useCallback(async () => {
     setTraitsChartReady(false);
     refreshStreak();
-    const [tasksOutcome, journalsOutcome, chartOutcome, pinnedOutcome] =
-      await Promise.allSettled([
+    setGoalsLoading(true);
+    const [tasksOutcome, journalsOutcome] = await Promise.allSettled([
       fetchAuthenticatedTasks(),
       fetchJournals(),
-      fetchPersonalityTraitsChart(),
-      fetchPinnedTraits(),
     ]);
     if (tasksOutcome.status === "fulfilled") {
       setTaskList(tasksOutcome.value);
@@ -237,6 +310,23 @@ export default function NudgeHomePage() {
     } else {
       setJournalRecords([]);
     }
+
+    const lowerSectionResults = await Promise.allSettled([
+      fetchPersonalityTraitsChart(),
+      fetchPinnedTraits(),
+      fetchGrowthGoalSuggestions(),
+      fetchPinnedGrowthGoals(),
+      fetchGrowthGoalsActivityTotals({ grain: "day", fromDate: dayRange.fromDate, toDate: dayRange.toDate }),
+      fetchTraitsActivityTotals({ grain: "day", fromDate: dayRange.fromDate, toDate: dayRange.toDate }),
+    ]);
+    const [
+      chartOutcome,
+      pinnedOutcome,
+      goalSuggestionsOutcome,
+      pinnedGoalsOutcome,
+      goalDayOutcome,
+      traitDayOutcome,
+    ] = lowerSectionResults;
     if (chartOutcome.status === "fulfilled") {
       setTraitsChart(chartOutcome.value);
       setTraitsChartError(false);
@@ -249,8 +339,93 @@ export default function NudgeHomePage() {
     } else {
       setPinnedTraits([]);
     }
+    if (goalSuggestionsOutcome.status === "fulfilled") {
+      setGoalSuggestions(goalSuggestionsOutcome.value);
+      setGoalsFailed(false);
+    } else {
+      setGoalSuggestions([]);
+      setGoalsFailed(true);
+    }
+    if (pinnedGoalsOutcome.status === "fulfilled") {
+      setPinnedGoals(pinnedGoalsOutcome.value);
+    } else {
+      setPinnedGoals([]);
+    }
+    if (goalDayOutcome.status === "fulfilled") {
+      topMapCacheRef.current.set(`goals|day|${dayRange.fromDate}|${dayRange.toDate}`, goalDayOutcome.value);
+    }
+    if (traitDayOutcome.status === "fulfilled") {
+      topMapCacheRef.current.set(`traits|day|${dayRange.fromDate}|${dayRange.toDate}`, traitDayOutcome.value);
+    }
+    setGoalsLoading(false);
     setTraitsChartReady(true);
-  }, [refreshStreak]);
+  }, [dayRange.fromDate, dayRange.toDate, refreshStreak]);
+
+  useEffect(() => {
+    if (!topMapOpen) {
+      return;
+    }
+    const key = `${statsMode}|${topMapGrain}|${topMapRange.fromDate}|${topMapRange.toDate}`;
+    const cached = topMapCacheRef.current.get(key);
+    if (cached) {
+      setTopMapBuckets(cached);
+      setTopMapError(false);
+      setTopMapLoading(false);
+      return;
+    }
+    if ((topMapBuckets ?? []).length === 0) {
+      setTopMapLoading(true);
+    }
+    const run = async () => {
+      try {
+        const data = statsMode === "goals"
+          ? await fetchGrowthGoalsActivityTotals({
+              grain: topMapGrain,
+              fromDate: topMapRange.fromDate,
+              toDate: topMapRange.toDate,
+            })
+          : await fetchTraitsActivityTotals({
+              grain: topMapGrain,
+              fromDate: topMapRange.fromDate,
+              toDate: topMapRange.toDate,
+            });
+        topMapCacheRef.current.set(key, data);
+        setTopMapBuckets(data);
+        setTopMapError(false);
+      } catch {
+        setTopMapBuckets([]);
+        setTopMapError(true);
+      } finally {
+        setTopMapLoading(false);
+      }
+    };
+    run();
+  }, [statsMode, topMapBuckets, topMapGrain, topMapOpen, topMapRange.fromDate, topMapRange.toDate]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const onOnline = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      localStorage.setItem(HOME_MAP_OPEN_STORAGE_KEY, topMapOpen ? "1" : "0");
+    } catch {
+      // ignore storage write failures
+    }
+  }, [topMapOpen]);
 
   const pinnedTraitLookup = useMemo(() => {
     const s = new Set();
@@ -320,6 +495,77 @@ export default function NudgeHomePage() {
       setListRefreshing(false);
     }
   }, [reloadFeeds]);
+
+  const handlePinGoal = useCallback(
+    async (goal) => {
+      const goalId = String(goal?.id ?? "").trim();
+      if (!goalId || goalBusyId === goalId) {
+        return;
+      }
+      setGoalBusyId(goalId);
+      setPinnedGoals((prev) => {
+        if ((prev ?? []).some((g) => String(g.id) === goalId)) {
+          return prev ?? [];
+        }
+        return [
+          ...(prev ?? []),
+          { id: goalId, label: goal.label, created_at: "" },
+        ];
+      });
+      try {
+        const pinned = await pinGrowthGoal(goalId);
+        if (pinned) {
+          setPinnedGoals((prev) => {
+            const rest = (prev ?? []).filter((g) => String(g.id) !== goalId);
+            return [...rest, pinned];
+          });
+        } else {
+          const all = await fetchPinnedGrowthGoals();
+          setPinnedGoals(all);
+        }
+      } catch {
+        const all = await fetchPinnedGrowthGoals().catch(() => []);
+        setPinnedGoals(all);
+      } finally {
+        setGoalBusyId(null);
+      }
+    },
+    [goalBusyId],
+  );
+
+  const handleUnpinGoal = useCallback(
+    async (goal) => {
+      const goalId = String(goal?.id ?? "").trim();
+      if (!goalId || goalBusyId === goalId) {
+        return;
+      }
+      setGoalBusyId(goalId);
+      setPinnedGoals((prev) => (prev ?? []).filter((g) => String(g.id) !== goalId));
+      try {
+        const next = await unpinGrowthGoal(goalId);
+        setPinnedGoals(next);
+      } catch {
+        const all = await fetchPinnedGrowthGoals().catch(() => []);
+        setPinnedGoals(all);
+      } finally {
+        setGoalBusyId(null);
+      }
+    },
+    [goalBusyId],
+  );
+
+  const handleDismissGoalSuggestion = useCallback((goal) => {
+    const goalId = String(goal?.id ?? "").trim();
+    if (!goalId) {
+      return;
+    }
+    setGoalDismissedIds((prev) => {
+      if ((prev ?? []).includes(goalId)) {
+        return prev ?? [];
+      }
+      return [...(prev ?? []), goalId];
+    });
+  }, []);
 
   useEffect(() => {
     reloadFeeds();
@@ -520,7 +766,43 @@ export default function NudgeHomePage() {
         streakCount={streakCount}
         totalMoments={totalMoments}
         weekSlice={weekSlice}
+        mapOpen={topMapOpen}
+        onToggleMap={() => setTopMapOpen((v) => !v)}
       />
+      {topMapOpen ? (
+        <TopMapPanel className="animate-fade-up stagger-150">
+          <MapModeRow role="tablist" aria-label="Main map source">
+            <MapModeBtn
+              type="button"
+              role="tab"
+              aria-selected={statsMode === "goals"}
+              $active={statsMode === "goals"}
+              onClick={() => setStatsMode("goals")}
+            >
+              Goals
+            </MapModeBtn>
+            <MapModeBtn
+              type="button"
+              role="tab"
+              aria-selected={statsMode === "traits"}
+              $active={statsMode === "traits"}
+              onClick={() => setStatsMode("traits")}
+            >
+              Traits
+            </MapModeBtn>
+          </MapModeRow>
+          <ActivityHeatmap
+            title={statsMode === "goals" ? "Goals map" : "Traits map"}
+            grain={topMapGrain}
+            onGrainChange={setTopMapGrain}
+            fromDate={topMapRange.fromDate}
+            toDate={topMapRange.toDate}
+            buckets={topMapBuckets}
+            loading={topMapLoading}
+            error={topMapError}
+          />
+        </TopMapPanel>
+      ) : null}
 
       <MobileStack>
         <MobileWriteHint>
@@ -528,7 +810,8 @@ export default function NudgeHomePage() {
           <strong style={{ color: "hsl(var(--primary))" }}>Write</strong>{" "}
           button below to capture your day — or open{" "}
           <InlineLink to="/app/identity">Identity</InlineLink> and{" "}
-          <InlineLink to="/app/traits">Traits</InlineLink> from the tabs.
+          <InlineLink to="/app/traits">Traits</InlineLink> /{" "}
+          <InlineLink to="/app/goals">Goals</InlineLink> from the tabs.
         </MobileWriteHint>
         <MobileSuggestCard className="animate-fade-up stagger-150">
           <MobileSuggestLead>
@@ -648,7 +931,19 @@ export default function NudgeHomePage() {
             pinBusyLabel={pinBusyLabel}
             onTogglePinTrait={togglePinnedTrait}
           />
-          <ActiveGoalsPanel />
+          <ActiveGoalsPanel
+            suggestions={goalSuggestions}
+            pinnedGoals={pinnedGoals}
+            dismissedSuggestionIds={goalDismissedIds}
+            pinLimit={5}
+            busyGoalId={goalBusyId}
+            loading={goalsLoading}
+            error={goalsFailed}
+            offline={isOffline}
+            onPin={handlePinGoal}
+            onUnpin={handleUnpinGoal}
+            onDismiss={handleDismissGoalSuggestion}
+          />
         </DesktopRight>
       </DesktopMain>
     </PullToRefresh>

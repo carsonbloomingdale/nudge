@@ -91,3 +91,206 @@ export async function replacePinnedTraits(labels) {
   });
   return normalizePinnedTraitsPayload(data);
 }
+
+/**
+ * @typedef {{
+ *   id: string;
+ *   label: string;
+ *   rationale: string;
+ *   sourceTasks: string[];
+ * }} GrowthGoalSuggestion
+ */
+
+function asTrimmedString(value) {
+  if (value == null) {
+    return "";
+  }
+  return String(value).trim();
+}
+
+function normalizeSourceTasks(raw) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw
+    .map((x) => {
+      if (typeof x === "string") {
+        return x.trim();
+      }
+      if (x && typeof x === "object") {
+        return asTrimmedString(x.snippet ?? x.task ?? x.text ?? x.label);
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
+
+function normalizeGoalSuggestion(item, index) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+  const label = asTrimmedString(item.label ?? item.goal_label ?? item.goal);
+  if (!label) {
+    return null;
+  }
+  const sourceTasks = normalizeSourceTasks(item.source_tasks ?? item.sources);
+  const rationale = asTrimmedString(item.rationale ?? item.reason)
+    || (sourceTasks.length > 0 ? `Based on tasks: ${sourceTasks.slice(0, 2).join(" | ")}` : "");
+  const id = asTrimmedString(item.goal_id ?? item.id) || `${label.toLowerCase()}-${index}`;
+  return { id, label, rationale, sourceTasks };
+}
+
+/**
+ * @returns {Promise<GrowthGoalSuggestion[]>}
+ */
+export async function fetchGrowthGoalSuggestions() {
+  const { data } = await http.get("/api/growth-goals/suggestions");
+  const list = Array.isArray(data?.suggestions)
+    ? data.suggestions
+    : Array.isArray(data)
+      ? data
+      : [];
+  return list.map(normalizeGoalSuggestion).filter(Boolean);
+}
+
+/**
+ * @typedef {{ id: string; label: string; created_at: string }} PinnedGrowthGoal
+ */
+
+function normalizePinnedGoal(item, index) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+  const label = asTrimmedString(item.label ?? item.goal_label ?? item.goal);
+  if (!label) {
+    return null;
+  }
+  const id = asTrimmedString(item.goal_id ?? item.id) || `${label.toLowerCase()}-${index}`;
+  return {
+    id,
+    label,
+    created_at: asTrimmedString(item.created_at ?? item.createdAt),
+  };
+}
+
+/**
+ * @returns {Promise<PinnedGrowthGoal[]>}
+ */
+export async function fetchPinnedGrowthGoals() {
+  const { data } = await http.get("/api/growth-goals/pinned");
+  const list = Array.isArray(data?.goals) ? data.goals : Array.isArray(data) ? data : [];
+  return list.map(normalizePinnedGoal).filter(Boolean);
+}
+
+/**
+ * @param {string} goalId
+ * @returns {Promise<PinnedGrowthGoal | null>}
+ */
+export async function pinGrowthGoal(goalId) {
+  const normalizedGoalId = asTrimmedString(goalId);
+  const safe = encodeURIComponent(normalizedGoalId);
+  const { data } = await http.post(`/api/growth-goals/${safe}/pin`);
+  if (Array.isArray(data?.goals) || Array.isArray(data)) {
+    const list = Array.isArray(data?.goals) ? data.goals : data;
+    const normalized = list.map(normalizePinnedGoal).filter(Boolean);
+    return normalized.find((x) => String(x.id) === normalizedGoalId) ?? null;
+  }
+  return normalizePinnedGoal(data, 0);
+}
+
+/**
+ * @param {string} goalId
+ * @returns {Promise<PinnedGrowthGoal[]>}
+ */
+export async function unpinGrowthGoal(goalId) {
+  const safe = encodeURIComponent(asTrimmedString(goalId));
+  const { data } = await http.delete(`/api/growth-goals/${safe}/pin`);
+  const list = Array.isArray(data?.goals) ? data.goals : Array.isArray(data) ? data : [];
+  return list.map(normalizePinnedGoal).filter(Boolean);
+}
+
+/**
+ * @typedef {{ bucketStart: string; bucketEnd: string; total: number }} ActivityBucket
+ */
+
+function normalizeActivityBuckets(data) {
+  const list = Array.isArray(data?.activity)
+    ? data.activity
+    : Array.isArray(data?.buckets)
+      ? data.buckets
+      : Array.isArray(data)
+        ? data
+        : [];
+  return list
+    .map((x) => {
+      if (!x || typeof x !== "object") {
+        return null;
+      }
+      const bucketStart = asTrimmedString(
+        x.bucket_start ?? x.date ?? x.period_start ?? x.start_date,
+      );
+      if (!bucketStart) {
+        return null;
+      }
+      const bucketEnd = asTrimmedString(x.bucket_end ?? x.period_end ?? x.end_date) || bucketStart;
+      const total = Number(x.total ?? x.count ?? x.value ?? 0) || 0;
+      return { bucketStart, bucketEnd, total };
+    })
+    .filter(Boolean);
+}
+
+function toQueryParams({ grain = "day", fromDate, toDate }) {
+  return {
+    grain,
+    from_date: asTrimmedString(fromDate),
+    to_date: asTrimmedString(toDate),
+  };
+}
+
+/**
+ * @param {{ grain?: "day" | "week" | "month", fromDate: string, toDate: string }} options
+ * @returns {Promise<ActivityBucket[]>}
+ */
+export async function fetchGrowthGoalsActivityTotals(options) {
+  const { data } = await http.get("/api/analytics/growth-goals/activity/totals", {
+    params: toQueryParams(options),
+  });
+  return normalizeActivityBuckets(data);
+}
+
+/**
+ * @param {string} goalId
+ * @param {{ grain?: "day" | "week" | "month", fromDate: string, toDate: string }} options
+ * @returns {Promise<ActivityBucket[]>}
+ */
+export async function fetchGrowthGoalActivity(goalId, options) {
+  const safe = encodeURIComponent(asTrimmedString(goalId));
+  const { data } = await http.get(`/api/analytics/growth-goals/${safe}/activity`, {
+    params: toQueryParams(options),
+  });
+  return normalizeActivityBuckets(data);
+}
+
+/**
+ * @param {{ grain?: "day" | "week" | "month", fromDate: string, toDate: string }} options
+ * @returns {Promise<ActivityBucket[]>}
+ */
+export async function fetchTraitsActivityTotals(options) {
+  const { data } = await http.get("/api/analytics/traits/activity/totals", {
+    params: toQueryParams(options),
+  });
+  return normalizeActivityBuckets(data);
+}
+
+/**
+ * @param {string} traitLabel
+ * @param {{ grain?: "day" | "week" | "month", fromDate: string, toDate: string }} options
+ * @returns {Promise<ActivityBucket[]>}
+ */
+export async function fetchTraitActivity(traitLabel, options) {
+  const safe = encodeURIComponent(asTrimmedString(traitLabel));
+  const { data } = await http.get(`/api/analytics/traits/${safe}/activity`, {
+    params: toQueryParams(options),
+  });
+  return normalizeActivityBuckets(data);
+}

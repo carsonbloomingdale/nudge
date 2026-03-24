@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { useAuth } from "../auth/AuthContext";
 import BottomNav from "../components/mobile/BottomNav";
 import MobileComposer from "../components/mobile/MobileComposer";
+import SupportMole from "../components/support/SupportMole";
 import { AppShellProvider, useAppShell } from "../context/AppShellContext";
 import {
   CUSTOM_UI_ACCENT_ID,
@@ -523,6 +524,7 @@ function AppLayoutInner() {
       </Main>
       <BottomNav />
       <MobileComposer />
+      <SupportMole />
     </Shell>
   );
 }

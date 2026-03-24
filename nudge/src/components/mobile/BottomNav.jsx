@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import styled from "styled-components";
 import { useAppShell } from "../../context/AppShellContext";
 
@@ -67,6 +68,83 @@ const TabLink = styled(NavLink)`
     outline: 2px solid hsl(var(--primary) / 0.4);
     outline-offset: 2px;
     border-radius: 8px;
+  }
+`;
+
+const MenuTrigger = styled.button`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.35rem 0.2rem 0.15rem;
+  text-decoration: none;
+  color: ${(p) => (p.$active ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))")};
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: color 200ms ease, transform 200ms ease;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transform: ${(p) => (p.$active ? "scale(1.04)" : "none")};
+
+  svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  &:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.4);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+`;
+
+const MenuWrap = styled.div`
+  position: relative;
+  flex: 1;
+  display: flex;
+`;
+
+const MenuPanel = styled.div`
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 8.25rem;
+  padding: 0.25rem;
+  border-radius: 0.7rem;
+  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(var(--card) / 0.98);
+  box-shadow: 0 8px 18px hsl(var(--foreground) / 0.12);
+  z-index: 60;
+`;
+
+const MenuItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: hsl(var(--foreground));
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-radius: 0.45rem;
+  padding: 0.42rem 0.5rem;
+  background: ${(p) => (p.$active ? "hsl(var(--primary) / 0.13)" : "transparent")};
+  transition: background-color 160ms ease, color 160ms ease;
+
+  &:hover {
+    background: hsl(var(--muted) / 0.7);
+  }
+
+  &:active {
+    background: hsl(var(--muted) / 0.85);
   }
 `;
 
@@ -187,6 +265,41 @@ function IconPen() {
 
 export default function BottomNav() {
   const { openComposer } = useAppShell();
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const isTraitsOrGoals = useMemo(
+    () =>
+      location.pathname.startsWith("/app/traits")
+      || location.pathname.startsWith("/app/goals"),
+    [location.pathname],
+  );
+  const traitsActive = location.pathname.startsWith("/app/traits");
+  const goalsActive = location.pathname.startsWith("/app/goals");
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return undefined;
+    }
+    const onDocClick = (event) => {
+      if (!menuRef.current?.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("touchstart", onDocClick);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("touchstart", onDocClick);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   return (
     <NavRoot aria-label="Primary">
@@ -212,11 +325,42 @@ export default function BottomNav() {
         </FabButton>
       </FabWrap>
       <SidePair>
-        <TabLink to="/app/traits">
-          <IconBars />
-          <TabLabel>Traits</TabLabel>
-          <Dot aria-hidden />
-        </TabLink>
+        <MenuWrap ref={menuRef}>
+          <MenuTrigger
+            type="button"
+            $active={isTraitsOrGoals}
+            aria-label="Open traits and goals"
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <IconBars />
+            <TabLabel>Traits</TabLabel>
+            <Dot aria-hidden style={{ opacity: isTraitsOrGoals ? 1 : 0 }} />
+          </MenuTrigger>
+          {menuOpen ? (
+            <MenuPanel role="menu" aria-label="Traits and goals">
+              <MenuItem
+                to="/app/traits"
+                role="menuitem"
+                $active={traitsActive}
+                onClick={() => setMenuOpen(false)}
+              >
+                <span>Traits</span>
+                <span aria-hidden>→</span>
+              </MenuItem>
+              <MenuItem
+                to="/app/goals"
+                role="menuitem"
+                $active={goalsActive}
+                onClick={() => setMenuOpen(false)}
+              >
+                <span>Goals</span>
+                <span aria-hidden>→</span>
+              </MenuItem>
+            </MenuPanel>
+          ) : null}
+        </MenuWrap>
         <TabLink to="/app/account">
           <IconUser />
           Profile

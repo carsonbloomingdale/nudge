@@ -71,6 +71,13 @@ export default function LoginPage() {
           err &&
           typeof err === "object" &&
           err.isAxiosError === true &&
+          err.response?.status === 403
+        ) {
+          setError("Your account is locked. Contact support for help.");
+        } else if (
+          err &&
+          typeof err === "object" &&
+          err.isAxiosError === true &&
           err.response?.status === 503
         ) {
           setError("Sign-in is temporarily unavailable. Try again later.");
