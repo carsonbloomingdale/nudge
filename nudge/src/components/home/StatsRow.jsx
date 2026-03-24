@@ -13,6 +13,50 @@ const Grid = styled.div`
   }
 `;
 
+const Controls = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+`;
+
+const ToggleMapBtn = styled.button`
+  border: 1px solid hsl(var(--primary) / 0.4);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 0.2) 0%,
+    hsl(var(--primary) / 0.1) 100%
+  );
+  color: hsl(var(--foreground));
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
+  transition: transform 150ms ease, box-shadow 180ms ease, background-color 180ms ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.24);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 0.26) 0%,
+      hsl(var(--primary) / 0.14) 100%
+    );
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.35);
+    outline-offset: 2px;
+  }
+`;
+
 const Card = styled.div`
   border-radius: 0.75rem;
   padding: 0.6rem 0.5rem;
@@ -87,9 +131,21 @@ function IconCalendar() {
   );
 }
 
-export default function StatsRow({ streakCount, totalMoments, weekSlice }) {
+export default function StatsRow({
+  streakCount,
+  totalMoments,
+  weekSlice,
+  mapOpen = false,
+  onToggleMap,
+}) {
   return (
-    <Grid className="animate-fade-up stagger-100" aria-label="Summary stats">
+    <>
+      <Controls className="animate-fade-up stagger-100">
+        <ToggleMapBtn type="button" onClick={() => onToggleMap?.()}>
+          {mapOpen ? "Hide map" : "Show map"} ✦
+        </ToggleMapBtn>
+      </Controls>
+      <Grid className="animate-fade-up stagger-100" aria-label="Summary stats">
       <Card>
         <IconRow>
           <IconFlame />
@@ -111,6 +167,7 @@ export default function StatsRow({ streakCount, totalMoments, weekSlice }) {
         </IconRow>
         <Value className="tabular-nums">{weekSlice}</Value>
       </Card>
-    </Grid>
+      </Grid>
+    </>
   );
 }

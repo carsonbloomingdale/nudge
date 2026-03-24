@@ -46,6 +46,18 @@ http.interceptors.response.use(
     if (cfg.skipAuthRefresh) {
       return Promise.reject(error);
     }
+    if (
+      error.response?.status === 403 &&
+      String(cfg.url ?? "").includes("/api/admin/")
+    ) {
+      if (typeof window !== "undefined") {
+        const at = window.location.pathname;
+        if (at !== "/app/admin/insufficient") {
+          window.location.assign("/app/admin/insufficient");
+        }
+      }
+      return Promise.reject(error);
+    }
     if (error.response?.status !== 401) {
       return Promise.reject(error);
     }

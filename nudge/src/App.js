@@ -14,7 +14,14 @@ import NudgeHomePage from "./pages/NudgeHomePage";
 import SettingsPage from "./pages/SettingsPage";
 import IdentityMapPage from "./pages/IdentityMapPage";
 import TraitGrowthPage from "./pages/TraitGrowthPage";
+import GoalsPage from "./pages/GoalsPage";
 import TermsPage from "./pages/TermsPage";
+import SupportTicketsPage from "./pages/SupportTicketsPage";
+import AdminSupportQueuePage from "./pages/AdminSupportQueuePage";
+import AdminCustomersPage from "./pages/AdminCustomersPage";
+import AdminInsufficientPage from "./pages/AdminInsufficientPage";
+import AdminRoute from "./components/AdminRoute";
+import SectionErrorBoundary from "./components/errors/SectionErrorBoundary";
 import { initUiAccentFromStorage } from "./theme/uiAccent";
 
 function RootRedirect() {
@@ -28,6 +35,12 @@ function RootRedirect() {
 }
 
 function AppRoutes() {
+  const withBoundary = (section, element, opts = {}) => (
+    <SectionErrorBoundary section={section} showSendSupport={opts.showSendSupport}>
+      {element}
+    </SectionErrorBoundary>
+  );
+
   return (
     <Routes>
       <Route path="/" element={<RootRedirect />} />
@@ -64,13 +77,33 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<NudgeHomePage />} />
-        <Route path="identity" element={<IdentityMapPage />} />
-        <Route path="traits" element={<TraitGrowthPage />} />
+        <Route index element={withBoundary("Home", <NudgeHomePage />)} />
+        <Route path="identity" element={withBoundary("Identity", <IdentityMapPage />)} />
+        <Route path="traits" element={withBoundary("Traits", <TraitGrowthPage />)} />
         <Route path="insights" element={<Navigate to="/app/identity" replace />} />
-        <Route path="goals" element={<Navigate to="/app/traits" replace />} />
-        <Route path="account" element={<AccountPage />} />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="goals" element={withBoundary("Goals", <GoalsPage />)} />
+        <Route
+          path="support"
+          element={withBoundary("Support", <SupportTicketsPage />, { showSendSupport: false })}
+        />
+        <Route
+          path="admin/insufficient"
+          element={withBoundary("Admin insufficient", <AdminInsufficientPage />)}
+        />
+        <Route
+          path="admin/tickets"
+          element={(
+            <AdminRoute>{withBoundary("Admin tickets", <AdminSupportQueuePage />)}</AdminRoute>
+          )}
+        />
+        <Route
+          path="admin/customers"
+          element={(
+            <AdminRoute>{withBoundary("Admin customers", <AdminCustomersPage />)}</AdminRoute>
+          )}
+        />
+        <Route path="account" element={withBoundary("Account", <AccountPage />)} />
+        <Route path="settings" element={withBoundary("Settings", <SettingsPage />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

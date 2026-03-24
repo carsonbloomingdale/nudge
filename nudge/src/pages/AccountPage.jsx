@@ -6,6 +6,7 @@ import { AuthLegalNote } from "../components/auth/authStyles";
 import { fetchAuthenticatedTasks } from "../api/taskApi";
 import { useAppShell } from "../context/AppShellContext";
 import { displayUserAvatarLabel } from "../utils/userDisplay";
+import { isAdminLikeRole } from "../auth/roleAccess";
 import {
   hasSavedSmsPhone,
   isSmsFullyEnabled,
@@ -208,7 +209,7 @@ function displayName(user) {
 }
 
 export default function AccountPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { streakCount } = useAppShell();
   const navigate = useNavigate();
   const name = displayName(user);
@@ -218,6 +219,9 @@ export default function AccountPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (user?.role == null) {
+        await refreshUser().catch(() => null);
+      }
       try {
         const list = await fetchAuthenticatedTasks();
         if (!cancelled) {
@@ -232,7 +236,7 @@ export default function AccountPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshUser, user?.role]);
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -240,6 +244,8 @@ export default function AccountPage() {
   }, [logout, navigate]);
 
   const moments = momentCount ?? "—";
+  const hasKnownRole = user?.role != null && String(user.role).trim() !== "";
+  const showAdmin = !hasKnownRole || isAdminLikeRole(user?.role);
 
   return (
     <Card className="animate-fade-up stagger-0">
@@ -270,6 +276,22 @@ export default function AccountPage() {
         Settings
         <span aria-hidden>→</span>
       </SettingsLink>
+      <SettingsLink to="/app/support">
+        Support tickets
+        <span aria-hidden>→</span>
+      </SettingsLink>
+      {showAdmin ? (
+        <>
+          <SettingsLink to="/app/admin/tickets">
+            Admin support queue
+            <span aria-hidden>→</span>
+          </SettingsLink>
+          <SettingsLink to="/app/admin/customers">
+            Admin customers
+            <span aria-hidden>→</span>
+          </SettingsLink>
+        </>
+      ) : null}
 
       <Row>
         <Label>Display name</Label>

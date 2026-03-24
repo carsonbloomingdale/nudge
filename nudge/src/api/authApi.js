@@ -137,6 +137,10 @@ export async function fetchCurrentUserResilient() {
  *   smsOptIn: boolean,
  *   phoneVerified: boolean,
  *   phoneVerifiedAt: string | null,
+ *   role: string | null,
+ *   accountLocked: boolean | null,
+ *   adminNote: string | null,
+ *   mfaEnabled: boolean | null,
  * }} AuthUser
  */
 
@@ -197,6 +201,26 @@ export function normalizeUserPayload(data) {
     smsOptIn,
     phoneVerified,
     phoneVerifiedAt,
+    role:
+      u.role != null
+        ? String(u.role)
+        : u.user_role != null
+          ? String(u.user_role)
+          : u.person_role != null
+            ? String(u.person_role)
+            : null,
+    accountLocked:
+      "account_locked" in u || "accountLocked" in u
+        ? Boolean(u.account_locked ?? u.accountLocked)
+        : null,
+    adminNote:
+      "admin_note" in u || "adminNote" in u
+        ? String(u.admin_note ?? u.adminNote ?? "")
+        : null,
+    mfaEnabled:
+      "mfa_enabled" in u || "mfaEnabled" in u
+        ? Boolean(u.mfa_enabled ?? u.mfaEnabled)
+        : null,
   };
 }
 
@@ -213,7 +237,21 @@ export function mergeAuthMeData(prev, data) {
     if (prev?.userId && prev.userId !== full.userId) {
       return full;
     }
-    return prev?.userId === full.userId ? { ...prev, ...full } : full;
+    if (prev?.userId === full.userId) {
+      return {
+        ...prev,
+        ...full,
+        role: full.role ?? prev.role ?? null,
+        accountLocked:
+          full.accountLocked != null
+            ? full.accountLocked
+            : prev.accountLocked ?? null,
+        adminNote: full.adminNote ?? prev.adminNote ?? null,
+        mfaEnabled:
+          full.mfaEnabled != null ? full.mfaEnabled : prev.mfaEnabled ?? null,
+      };
+    }
+    return full;
   }
   if (!prev?.userId) {
     return null;
