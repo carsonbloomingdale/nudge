@@ -1,5 +1,7 @@
 # Nudge (frontend)
 
+**Package manager: [Bun](https://bun.sh/).** From this folder run **`bun install`**, then the scripts below (`bun run dev`, etc.).
+
 Create React App UI for Nudge. The API may use **HTTP-only cookies** (`access_token`, `refresh_token`). For reliable SPA auth (cross-origin, Safari, Bearer-only APIs), **`POST /auth/login`**, **`POST /auth/register`**, and **`POST /auth/refresh`** should **also** return **`access_token` and `refresh_token` in the JSON body**; the client saves them in **`sessionStorage`** (`nudge_access_token` / `nudge_refresh_token`) and sends **`Authorization: Bearer`** on API calls. Cookies alone are optional for authorization once JSON tokens are present. On **`POST /auth/refresh`**, the client tries **cookies first**, then **`{ "refresh_token": "..." }`** if the cookie refresh fails.
 
 **Backend JSON contract (recommended fields):** see **`docs/backend-auth-json.md`** in this repo.
@@ -23,6 +25,20 @@ Create React App UI for Nudge. The API may use **HTTP-only cookies** (`access_to
 - Response must include **`Access-Control-Allow-Credentials: true`** and a **specific** `Access-Control-Allow-Origin` (the exact SPA origin, not `*`).
 - **`http://localhost:3000` and `http://127.0.0.1:3000` are different origins** — include whichever you open in the browser (often both while testing).
 
+#### Capacitor / iOS Android (Eruda shows **status 0**)
+
+XHR/fetch that never get a readable response often show **status 0**. This project enables **`CapacitorHttp`** and **`CapacitorCookies`** in **`capacitor.config.ts`** so native iOS/Android perform API requests (axios uses XHR under the hood) and normal **HTTP status codes** appear—**run `bunx cap sync` after changing config**, then rebuild the app.
+
+If problems persist, check:
+
+1. **CORS** (browser / if native HTTP is off) — The WebView origin is **not** your CRA URL. Add these to **`CORS_ORIGINS`** on the API (exact strings; with **`withCredentials: true`** you cannot use `*`):
+   - `capacitor://localhost` (typical iOS)
+   - `ionic://localhost` (older Ionic/Capacitor)
+   - `https://localhost` (Android when `server.androidScheme` is `https` in `capacitor.config`)
+   Keep your existing `http://localhost:3000` / `http://127.0.0.1:3000` for browser dev. See **`docs/backend.env.example`** for a combined example.
+2. **ATS / HTTP** — Plain `http://` to a host that iOS blocks shows up the same way. **`Info.plist`** in this repo allows **localhost / 127.0.0.1** HTTP and **`NSAllowsLocalNetworking`** for LAN IPs; rebuild the iOS app after changes.
+3. **Unreachable host** — On a **physical device**, `http://127.0.0.1:8000` is the phone, not your Mac. Use your Mac’s LAN IP in **`REACT_APP_API_BASE_URL`** and ensure the API listens on `0.0.0.0`.
+
 #### “Still getting a CORS error” (local dev)
 
 **Option A — bypass CORS in dev (recommended for CRA):**
@@ -33,7 +49,7 @@ Create React App UI for Nudge. The API may use **HTTP-only cookies** (`access_to
    REACT_APP_USE_SAME_ORIGIN_API=true
    ```
    (Leave `REACT_APP_API_BASE_URL` unset or ignore it while this is on.)
-3. Restart **`npm run dev`**. The browser only talks to `localhost:3000`; the dev server proxies `/auth/*`, `/tasks/`, etc. to the API.
+3. Restart **`bun run dev`**. The browser only talks to `localhost:3000`; the dev server proxies `/auth/*`, `/tasks/`, etc. to the API.
 
 **Option B — fix CORS on the API** (needed for production / direct API URL anyway):
 
@@ -71,21 +87,23 @@ Client sends `Content-Type: application/json` only — **no OpenAI key** in the 
 
 ## Deploy (Heroku / Koyeb / production)
 
-**`npm start` serves the production `build/` folder** (static `serve`), not webpack-dev-server — safe for **`nudgeweb.app`** and custom domains.
+**`bun start` serves the production `build/` folder** (static `serve`), not webpack-dev-server — safe for **`nudgeweb.app`** and custom domains.
 
-**Local coding** uses **`npm run dev`** (CRA dev server on port 3000).
+**Local coding** uses **`bun run dev`** (CRA dev server on port 3000).
 
 | | |
 |--|--|
 | **Root directory** | `nudge` (if repo root is the monorepo) |
-| **Build command** | `npm ci && npm run build` (Heroku’s Node buildpack runs **`npm run build`** automatically when the `build` script exists) |
-| **Run command** | **`npm start`** (default on Heroku; serves `build/` on **`PORT`**) |
+| **Build command** | **`bun install --frozen-lockfile && bun run build`** (commit **`bun.lock`**) |
+| **Run command** | **`bun start`** (serves `build/` on **`PORT`**) |
 
-Set **`REACT_APP_*`** in the platform **environment** so **`npm run build`** bakes the right API URL into the bundle.
+Set **`REACT_APP_*`** in the platform **environment** so **`bun run build`** bakes the right API URL into the bundle.
 
-**Heroku build fails on `npm run build`?**
+**Heroku / default Node buildpack:** those expect npm and a lockfile from npm. Use a **Bun-capable** setup ([Oven’s Bun buildpack](https://github.com/oven-sh/heroku-buildpack-bun), a Dockerfile with Bun, or another host that installs from **`bun.lock`**), or keep using npm only on that host.
 
-- Set the app **root** to the **`nudge`** folder (monorepo: [Project root / `PROJECT_PATH`](https://devcenter.heroku.com/articles/monorepos) or equivalent), so Heroku uses this `package.json` + `package-lock.json`.
+**Heroku build fails on `bun run build`?**
+
+- Set the app **root** to the **`nudge`** folder (monorepo: [Project root / `PROJECT_PATH`](https://devcenter.heroku.com/articles/monorepos) or equivalent), so Heroku uses this `package.json` + **`bun.lock`**.
 - The `build` script uses **`GENERATE_SOURCEMAP=false`** to reduce memory; if you still see **JavaScript heap out of memory**, set a config var: **`NODE_OPTIONS=--max-old-space-size=4096`** (if your dyno has enough RAM).
 
 ## Environment variables
@@ -101,29 +119,35 @@ Set **`REACT_APP_*`** in the platform **environment** so **`npm run build`** bak
 
 3. **Local full stack:** API on port **8000** (typical); CRA dev server uses **`HOST` / `PORT`** in `.env.local` for the **frontend** (e.g. `0.0.0.0:3000`).
 
-4. **Production:** set **`REACT_APP_API_BASE_URL`** on the build host (e.g. Koyeb). `npm run build` does not bundle `.env.local`.
+4. **Production:** set **`REACT_APP_API_BASE_URL`** on the build host (e.g. Koyeb). `bun run build` does not bundle `.env.local`.
 
 Backend-only template (separate repo): **`docs/backend.env.example`** at repo root (if present).
 
 ## Available Scripts
 
-### `npm run dev`
+Install deps once: **`bun install`** (from the **`nudge`** directory).
+
+### `bun run dev`
 
 Runs the **development** server (hot reload). Open [http://localhost:3000](http://localhost:3000). Use this on your machine only.
 
-### `npm start`
+### `bun start`
 
-Serves the **production** **`build/`** folder with **`serve`** (binds **`0.0.0.0:$PORT`**). Used by **Heroku** and can be used by **Koyeb** as the run command. Run **`npm run build`** first (or deploy with a build step / **`heroku-postbuild`**).
+Serves the **production** **`build/`** folder with **`serve`** (binds **`0.0.0.0:$PORT`**). Used in production deploys as the run command. Run **`bun run build`** first (or deploy with a build step / **`heroku-postbuild`**).
 
-### `npm test`
+### `bun run test`
 
-Runs tests.
+Runs **Jest** via CRA (`react-scripts test`), e.g. **`src/App.test.js`**.
 
-### `npm run build`
+### `bun run test:bun`
+
+Runs **Bun’s test runner** on **`tests/bun/`** (Happy DOM + Testing Library): runner smoke test plus **page smoke tests** (`pages.smoke.test.tsx`). Uses **`bunfig.toml`** preloads (`tests/bun/happydom.ts`, `tests/bun/testing-library.ts`, **`src/test/bunPageMocks.ts`**).
+
+### `bun run build`
 
 Production build to `build/`.
 
-### `npm run eject`
+### `bun run eject`
 
 One-way eject from CRA defaults.
 
