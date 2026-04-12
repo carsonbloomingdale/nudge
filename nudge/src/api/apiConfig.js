@@ -12,6 +12,6 @@ const useSameOriginProxy =
 const raw = useSameOriginProxy
   ? ""
   : process.env.REACT_APP_API_BASE_URL ||
-    "https://urgent-maria-nudge-9f4b7e98.koyeb.app";
+    "https://fastapi-main-nudgeapp-c7c72f0d.koyeb.app";
 
 export const API_BASE_URL = String(raw).replace(/\/+$/, "");

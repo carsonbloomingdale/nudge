@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import debounce from "debounce";
 import styled from "styled-components";
 import { Link } from "react-router-dom";
 import fetchTaskData, {
@@ -38,6 +37,7 @@ import TraitGrowthPanel from "../components/home/TraitGrowthPanel";
 import ActiveGoalsPanel from "../components/home/ActiveGoalsPanel";
 import ActivityHeatmap from "../components/analytics/ActivityHeatmap";
 import { useAppShell } from "../context/AppShellContext";
+import { clearJournalDraftStash, stashJournalDraftPendingConfirm } from "../model/journalPendingDraft";
 
 const LG = "1024px";
 
@@ -578,7 +578,6 @@ export default function NudgeHomePage() {
         return;
       }
       setFeedMode("journals");
-      closeComposer();
       setJournalInsightSession({
         journalId: null,
         phase: "generating",
@@ -603,6 +602,8 @@ export default function NudgeHomePage() {
             }
           },
         });
+        clearJournalDraftStash();
+        closeComposer();
         recordStreakOnSubmit();
         try {
           await reloadFeeds();
@@ -612,8 +613,9 @@ export default function NudgeHomePage() {
         } catch {
           setTaskList((prev) => [...(prev ?? []), { label: trimmed }]);
         }
-      } catch {
+      } catch (err) {
         setJournalInsightSession(null);
+        throw err;
       }
     },
     [
@@ -673,9 +675,7 @@ export default function NudgeHomePage() {
         return;
       }
       const submitText = trimmed;
-      setDidToday("");
-      setPromptFieldKey((k) => k + 1);
-      setDesktopAttachFiles([]);
+      const filesSnapshot = [...desktopAttachFiles];
       setFeedMode("journals");
       setJournalInsightSession({
         journalId: null,
@@ -683,10 +683,11 @@ export default function NudgeHomePage() {
         pendingNote: submitText,
       });
       scrollToJournalTimeline();
+      stashJournalDraftPendingConfirm(submitText);
       let persistedJournalId = null;
       try {
         await fetchTaskData(submitText, taskList, {
-          files: desktopAttachFiles,
+          files: filesSnapshot,
           onPersistComplete: (jid, enriched, note) => {
             if (jid != null && enriched != null) {
               persistedJournalId = jid;
@@ -701,6 +702,10 @@ export default function NudgeHomePage() {
             }
           },
         });
+        clearJournalDraftStash();
+        setDidToday("");
+        setPromptFieldKey((k) => k + 1);
+        setDesktopAttachFiles([]);
         recordStreakOnSubmit();
         try {
           await reloadFeeds();
@@ -710,8 +715,13 @@ export default function NudgeHomePage() {
         } catch {
           setTaskList((prev) => [...(prev ?? []), { label: submitText }]);
         }
-      } catch {
+      } catch (err) {
         setJournalInsightSession(null);
+        const msg =
+          err && typeof err === "object" && "message" in err && typeof err.message === "string"
+            ? err.message
+            : "Couldn't save your entry. Your text is still below.";
+        window.alert(msg);
       }
     },
     [
@@ -739,14 +749,6 @@ export default function NudgeHomePage() {
       setSuggestionLoading(false);
     }
   }, []);
-
-  const handleChangeInput = useMemo(
-    () =>
-      debounce(({ target: { value } }) => {
-        setDidToday(value);
-      }, 200),
-    [],
-  );
 
   const totalMoments = taskList?.length ?? 0;
   const weekSlice = Math.min(totalMoments, 7);
@@ -888,8 +890,9 @@ export default function NudgeHomePage() {
           ) : null}
           <DesktopPromptCard
             fieldKey={promptFieldKey}
+            textValue={didToday ?? ""}
+            onTextChange={setDidToday}
             onSubmit={handleSubmit}
-            onChangeDebounced={handleChangeInput}
             attachmentFiles={desktopAttachFiles}
             onAttachmentFilesChange={setDesktopAttachFiles}
           />

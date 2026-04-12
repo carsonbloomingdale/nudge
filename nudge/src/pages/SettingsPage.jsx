@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import styled from "styled-components";
 import {
   messageFromAuthError,
@@ -391,6 +392,20 @@ export default function SettingsPage() {
         Toll-free sending in Twilio can still block delivery until your number is
         approved in Twilio Console.
       </Lead>
+      <p style={{ margin: "0 0 1.25rem" }}>
+        <Link
+          to="/app/reminders"
+          style={{
+            fontSize: "15px",
+            fontWeight: 600,
+            color: "hsl(var(--primary))",
+          }}
+        >
+          {Capacitor.isNativePlatform()
+            ? "Journal reminder — daily notification →"
+            : "Journal reminder (mobile app) →"}
+        </Link>
+      </p>
       {loadError ? <ErrorBox style={{ marginBottom: "0.75rem" }}>{loadError}</ErrorBox> : null}
       {loadingProfile ? (
         <p style={{ margin: 0, color: "hsl(var(--muted-foreground))" }}>Loading profile…</p>

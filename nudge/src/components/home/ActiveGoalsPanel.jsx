@@ -177,6 +177,24 @@ const Helper = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
+const ExpandToggle = styled.button`
+  margin: 0.35rem 0 0;
+  padding: 0;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.35;
+  text-align: left;
+
+  &:hover {
+    color: hsl(var(--foreground));
+    text-decoration: underline;
+  }
+`;
+
 const TitleLeft = styled.span`
   display: inline-flex;
   align-items: center;
@@ -250,19 +268,27 @@ export default function ActiveGoalsPanel({
 }) {
   const prevPinnedIdsRef = useRef([]);
   const [justPinnedId, setJustPinnedId] = useState("");
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
 
   const dismissedLookup = useMemo(() => new Set(dismissedSuggestionIds), [dismissedSuggestionIds]);
   const pinnedLookup = useMemo(
     () => new Set((pinnedGoals ?? []).map((x) => String(x.id))),
     [pinnedGoals],
   );
-  const visibleSuggestions = useMemo(
+  const eligibleSuggestions = useMemo(
     () =>
       (suggestions ?? [])
         .filter((s) => !dismissedLookup.has(String(s.id)))
-        .filter((s) => !pinnedLookup.has(String(s.id)))
-        .slice(0, 5),
+        .filter((s) => !pinnedLookup.has(String(s.id))),
     [suggestions, dismissedLookup, pinnedLookup],
+  );
+  const hiddenSuggestionsWhenCollapsed = Math.max(0, eligibleSuggestions.length - 5);
+  const visibleSuggestions = useMemo(
+    () =>
+      suggestionsExpanded
+        ? eligibleSuggestions
+        : eligibleSuggestions.slice(0, 5),
+    [eligibleSuggestions, suggestionsExpanded],
   );
   const pinLimitReached = pinnedGoals.length >= pinLimit;
 
@@ -366,6 +392,25 @@ export default function ActiveGoalsPanel({
               ))}
             </List>
           )}
+          {hiddenSuggestionsWhenCollapsed > 0 && !suggestionsExpanded ? (
+            <ExpandToggle
+              type="button"
+              onClick={() => setSuggestionsExpanded(true)}
+              aria-expanded={suggestionsExpanded}
+            >
+              +{hiddenSuggestionsWhenCollapsed} more suggestion
+              {hiddenSuggestionsWhenCollapsed === 1 ? "" : "s"} — show all
+            </ExpandToggle>
+          ) : null}
+          {suggestionsExpanded && hiddenSuggestionsWhenCollapsed > 0 ? (
+            <ExpandToggle
+              type="button"
+              onClick={() => setSuggestionsExpanded(false)}
+              aria-expanded={suggestionsExpanded}
+            >
+              Show fewer suggestions
+            </ExpandToggle>
+          ) : null}
           {pinLimitReached ? <Helper>Pin limit reached ({pinLimit}). Unpin one to add another.</Helper> : null}
         </Section>
       </Card>

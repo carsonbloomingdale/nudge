@@ -124,8 +124,9 @@ function SparkleIcon() {
 
 export default function DesktopPromptCard({
   fieldKey = 0,
+  textValue = "",
+  onTextChange,
   onSubmit,
-  onChangeDebounced,
   attachmentFiles = [],
   onAttachmentFilesChange,
 }) {
@@ -142,7 +143,8 @@ export default function DesktopPromptCard({
         <TextArea
           key={fieldKey}
           name="didToday"
-          onChange={onChangeDebounced}
+          value={textValue}
+          onChange={(e) => onTextChange?.(e.target.value)}
           onInput={(e) => {
             const el = e.currentTarget;
             el.style.height = "auto";
