@@ -16,6 +16,7 @@ import JournalReminderPage from "./pages/JournalReminderPage";
 import IdentityMapPage from "./pages/IdentityMapPage";
 import TraitGrowthPage from "./pages/TraitGrowthPage";
 import GoalsPage from "./pages/GoalsPage";
+import FinancesPage from "./pages/FinancesPage";
 import TermsPage from "./pages/TermsPage";
 import SupportTicketsPage from "./pages/SupportTicketsPage";
 import AdminSupportQueuePage from "./pages/AdminSupportQueuePage";
@@ -85,6 +86,7 @@ function AppRoutes() {
         <Route path="traits" element={withBoundary("Traits", <TraitGrowthPage />)} />
         <Route path="insights" element={<Navigate to="/app/identity" replace />} />
         <Route path="goals" element={withBoundary("Goals", <GoalsPage />)} />
+        <Route path="finances" element={withBoundary("Finances", <FinancesPage />)} />
         <Route
           path="support"
           element={withBoundary("Support", <SupportTicketsPage />, { showSendSupport: false })}
