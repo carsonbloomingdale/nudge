@@ -74,6 +74,41 @@ const DesktopRight = styled.div`
   gap: 1.5rem;
 `;
 
+const FinanceBookCard = styled(Link)`
+  display: block;
+  text-decoration: none;
+  border-radius: 0.85rem;
+  padding: 1rem 1.05rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.55);
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  transition: box-shadow 220ms ease, transform 180ms ease;
+
+  &:hover {
+    box-shadow: 0 6px 16px hsl(var(--foreground) / 0.1);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.35);
+    outline-offset: 2px;
+  }
+`;
+
+const FinanceBookTitle = styled.h3`
+  margin: 0 0 0.35rem;
+  color: hsl(var(--foreground));
+  font-size: 0.95rem;
+  font-weight: 600;
+`;
+
+const FinanceBookBody = styled.p`
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+`;
+
 const MobileWriteHint = styled.p`
   margin: 0 0 1rem;
   font-size: 14px;
@@ -813,8 +848,17 @@ export default function NudgeHomePage() {
           button below to capture your day — or open{" "}
           <InlineLink to="/app/identity">Identity</InlineLink> and{" "}
           <InlineLink to="/app/traits">Traits</InlineLink> /{" "}
-          <InlineLink to="/app/goals">Goals</InlineLink> from the tabs.
+          <InlineLink to="/app/goals">Goals</InlineLink> /
+          {" "}
+          <InlineLink to="/app/finances">Finances</InlineLink> from Explore.
         </MobileWriteHint>
+        <FinanceBookCard to="/app/finances" className="animate-fade-up stagger-100">
+          <FinanceBookTitle>Finances book</FinanceBookTitle>
+          <FinanceBookBody>
+            Open the full finances page. This is a starter shell for the upcoming
+            finance experience.
+          </FinanceBookBody>
+        </FinanceBookCard>
         <MobileSuggestCard className="animate-fade-up stagger-150">
           <MobileSuggestLead>
             Need a little nudge? I can generate one based on what you&apos;ve
@@ -947,6 +991,13 @@ export default function NudgeHomePage() {
             onUnpin={handleUnpinGoal}
             onDismiss={handleDismissGoalSuggestion}
           />
+          <FinanceBookCard to="/app/finances" className="animate-fade-up stagger-450">
+            <FinanceBookTitle>Finances book</FinanceBookTitle>
+            <FinanceBookBody>
+              Click to open your full finances section. Content is intentionally
+              stubbed for now.
+            </FinanceBookBody>
+          </FinanceBookCard>
         </DesktopRight>
       </DesktopMain>
     </PullToRefresh>
