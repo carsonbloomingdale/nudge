@@ -268,16 +268,14 @@ export default function BottomNav() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const isExplore = useMemo(
+  const isTraitsOrGoals = useMemo(
     () =>
       location.pathname.startsWith("/app/traits")
-      || location.pathname.startsWith("/app/goals")
-      || location.pathname.startsWith("/app/finances"),
+      || location.pathname.startsWith("/app/goals"),
     [location.pathname],
   );
   const traitsActive = location.pathname.startsWith("/app/traits");
   const goalsActive = location.pathname.startsWith("/app/goals");
-  const financesActive = location.pathname.startsWith("/app/finances");
 
   useEffect(() => {
     if (!menuOpen) {
@@ -330,18 +328,18 @@ export default function BottomNav() {
         <MenuWrap ref={menuRef}>
           <MenuTrigger
             type="button"
-            $active={isExplore}
-            aria-label="Open explore menu"
+            $active={isTraitsOrGoals}
+            aria-label="Open traits and goals"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
             onClick={() => setMenuOpen((v) => !v)}
           >
             <IconBars />
-            <TabLabel>Explore</TabLabel>
-            <Dot aria-hidden style={{ opacity: isExplore ? 1 : 0 }} />
+            <TabLabel>Traits</TabLabel>
+            <Dot aria-hidden style={{ opacity: isTraitsOrGoals ? 1 : 0 }} />
           </MenuTrigger>
           {menuOpen ? (
-            <MenuPanel role="menu" aria-label="Explore sections">
+            <MenuPanel role="menu" aria-label="Traits and goals">
               <MenuItem
                 to="/app/traits"
                 role="menuitem"
@@ -358,15 +356,6 @@ export default function BottomNav() {
                 onClick={() => setMenuOpen(false)}
               >
                 <span>Goals</span>
-                <span aria-hidden>→</span>
-              </MenuItem>
-              <MenuItem
-                to="/app/finances"
-                role="menuitem"
-                $active={financesActive}
-                onClick={() => setMenuOpen(false)}
-              >
-                <span>Finances</span>
                 <span aria-hidden>→</span>
               </MenuItem>
             </MenuPanel>
