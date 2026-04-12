@@ -9,6 +9,7 @@
 
 # testing
 /coverage
+nudge/coverage
 
 # production
 /build
@@ -16,6 +17,18 @@ nudge/build
 
 # misc
 .DS_Store
+Thumbs.db
+*.log
+*.pem
+
+# Bun (local cache / install metadata — never commit)
+.bun/
+nudge/.bun/
+node_modules/.bun/
+nudge/node_modules/.bun/
+
+# Editor / OS
+.idea/
 
 # Env / secrets (never commit real values; commit nudge/.env.example only)
 .env
@@ -35,3 +48,4 @@ nudge/.env.production.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+bun-debug.log*
