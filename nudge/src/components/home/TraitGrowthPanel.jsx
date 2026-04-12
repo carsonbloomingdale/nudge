@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import styled from "styled-components";
 import ChartLoadingPlaceholder from "./ChartLoadingPlaceholder";
 import {
@@ -160,10 +160,22 @@ const Empty = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
-const HiddenTraitsNote = styled.p`
+const ExpandToggle = styled.button`
   margin: 0;
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
+  background: none;
+  border: none;
+  padding: 0.35rem 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  line-height: 1.35;
+
+  &:hover {
+    color: hsl(var(--foreground));
+    text-decoration: underline;
+  }
 `;
 
 function normalizeTraitLabel(s) {
@@ -204,6 +216,7 @@ export default function TraitGrowthPanel({
   pinBusyLabel = null,
   onTogglePinTrait,
 }) {
+  const [traitsExpanded, setTraitsExpanded] = useState(false);
   const viz = useMemo(() => {
     if (analyticsLoading) {
       return { kind: "loading" };
@@ -255,7 +268,7 @@ export default function TraitGrowthPanel({
     () => (viz.kind === "analytics" || viz.kind === "tasks" ? viz.rows : []),
     [viz],
   );
-  const rows = useMemo(() => {
+  const { rows, hiddenTraitsWhenCollapsed } = useMemo(() => {
     const pinned = [];
     const others = [];
     const pinnedSet = new Set((pinnedTraitLabels ?? []).map(normalizeTraitLabel));
@@ -283,10 +296,17 @@ export default function TraitGrowthPanel({
         memberLabels: [],
       });
     }
-    const visible = [...pinned, ...others.slice(0, Math.max(0, MAX_VISIBLE_TRAITS - pinned.length))];
-    return visible.map((r, i) => ({ ...r, uiCssVar: DISPLAY_TRAIT_VARS[i % DISPLAY_TRAIT_VARS.length] }));
-  }, [allRows, pinnedTraitLabels]);
-  const hiddenTraitsCount = Math.max(0, allRows.length - rows.length);
+    const othersCap = Math.max(0, MAX_VISIBLE_TRAITS - pinned.length);
+    const collapsedOthers = others.slice(0, othersCap);
+    const hiddenTraitsWhenCollapsed = Math.max(0, others.length - collapsedOthers.length);
+    const rest = traitsExpanded ? others : collapsedOthers;
+    const visible = [...pinned, ...rest];
+    const rowsOut = visible.map((r, i) => ({
+      ...r,
+      uiCssVar: DISPLAY_TRAIT_VARS[i % DISPLAY_TRAIT_VARS.length],
+    }));
+    return { rows: rowsOut, hiddenTraitsWhenCollapsed };
+  }, [allRows, pinnedTraitLabels, traitsExpanded]);
   const pinnedLookup = useMemo(
     () => new Set((pinnedTraitLabels ?? []).map(normalizeTraitLabel)),
     [pinnedTraitLabels],
@@ -362,10 +382,24 @@ export default function TraitGrowthPanel({
                 </Row>
               );
             })}
-            {hiddenTraitsCount > 0 ? (
-              <HiddenTraitsNote>
-                +{hiddenTraitsCount} hidden {hiddenTraitsCount === 1 ? "trait" : "traits"}
-              </HiddenTraitsNote>
+            {hiddenTraitsWhenCollapsed > 0 && !traitsExpanded ? (
+              <ExpandToggle
+                type="button"
+                onClick={() => setTraitsExpanded(true)}
+                aria-expanded={traitsExpanded}
+              >
+                +{hiddenTraitsWhenCollapsed} more{" "}
+                {hiddenTraitsWhenCollapsed === 1 ? "trait" : "traits"} — show all
+              </ExpandToggle>
+            ) : null}
+            {traitsExpanded && hiddenTraitsWhenCollapsed > 0 ? (
+              <ExpandToggle
+                type="button"
+                onClick={() => setTraitsExpanded(false)}
+                aria-expanded={traitsExpanded}
+              >
+                Show fewer traits
+              </ExpandToggle>
             ) : null}
           </Stack>
         ) : null}

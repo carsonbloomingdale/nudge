@@ -193,10 +193,9 @@ export default async function fetchTaskData(didToday, taskHistory, options) {
 
   const bundle = await enrichJournalToRows(trimmed, taskHistory);
   if (!bundle?.rows?.length) {
-    if (typeof onPersistComplete === "function") {
-      onPersistComplete(null, null, trimmed);
-    }
-    return null;
+    throw new Error(
+      "We couldn't process this entry (network or length limit). Your text was not saved — it's still in the editor.",
+    );
   }
 
   const { rows, perLineFallbacks } = bundle;
@@ -204,6 +203,11 @@ export default async function fetchTaskData(didToday, taskHistory, options) {
     perLineFallbacks,
   });
   const journalId = persisted.journalId ?? null;
+  if (journalId == null) {
+    throw new Error(
+      "Your entry could not be saved. Check your connection and try again — your text is still in the editor.",
+    );
+  }
 
   if (files.length > 0 && journalId != null) {
     try {

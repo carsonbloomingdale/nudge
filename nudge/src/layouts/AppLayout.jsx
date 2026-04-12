@@ -14,6 +14,7 @@ import {
   setUiAccentById,
   UI_ACCENT_OPTIONS,
 } from "../theme/uiAccent";
+import { subscribeJournalReminderTap } from "../mobile/journalReminder";
 import { displayUserAvatarLabel } from "../utils/userDisplay";
 
 const LG = "1024px";
@@ -71,17 +72,22 @@ const Header = styled.header`
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
-  min-height: 56px;
-  padding: 0 0.875rem;
+  /* viewport-fit=cover: keep bar background to the top, but controls below notch/Dynamic Island */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(0.875rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.875rem, env(safe-area-inset-right, 0px));
+  padding-bottom: 0;
+  min-height: calc(56px + env(safe-area-inset-top, 0px));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   background: hsl(var(--background) / 0.8);
   border-bottom: 1px solid hsl(var(--border));
 
   @media (min-width: ${LG}) {
-    min-height: 64px;
+    min-height: calc(64px + env(safe-area-inset-top, 0px));
     gap: 1rem;
-    padding: 0 1.5rem;
+    padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
   }
 `;
 
@@ -377,7 +383,7 @@ const FooterNote = styled.p`
 
 function AppLayoutInner() {
   const { user } = useAuth();
-  const { streakCount } = useAppShell();
+  const { streakCount, openComposer } = useAppShell();
   const [accentId, setAccentId] = useState(getStoredUiAccentId);
   const [customHex, setCustomHex] = useState(getStoredCustomUiAccentHex);
   const [accentMenuOpen, setAccentMenuOpen] = useState(false);
@@ -408,6 +414,9 @@ function AppLayoutInner() {
       setCustomEditorOpen(false);
     }
   }, [accentMenuOpen]);
+
+  useEffect(() => subscribeJournalReminderTap(openComposer), [openComposer]);
+
   useEffect(() => {
     if (!accentMenuOpen) {
       return undefined;

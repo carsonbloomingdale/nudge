@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import styled from "styled-components";
 import ChartLoadingPlaceholder from "./ChartLoadingPlaceholder";
 import { aggregateTraitStatsFromTasks } from "./traitUtils";
@@ -126,11 +126,23 @@ const SingleMeta = styled.p`
   color: hsl(var(--muted-foreground));
 `;
 
-const HiddenTraitsNote = styled.p`
+const ExpandToggle = styled.button`
   margin: -0.25rem 0 0;
   font-size: 0.75rem;
   color: hsl(var(--muted-foreground));
   text-align: center;
+  background: none;
+  border: none;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.35;
+  width: 100%;
+
+  &:hover {
+    color: hsl(var(--foreground));
+    text-decoration: underline;
+  }
 `;
 
 const CX = 130;
@@ -171,6 +183,7 @@ export default function IdentityRadar({
   analyticsLoading,
   analyticsFailed,
 }) {
+  const [radarExpanded, setRadarExpanded] = useState(false);
   const viz = useMemo(() => {
     if (analyticsLoading) {
       return { kind: "loading" };
@@ -204,14 +217,22 @@ export default function IdentityRadar({
     }
     return [];
   }, [viz]);
-  const displayedTraits = useMemo(
-    () =>
-      radarTraits
-        .slice(0, MAX_VISIBLE_TRAITS)
-        .map((t, i) => ({ ...t, uiCssVar: DISPLAY_TRAIT_VARS[i] })),
-    [radarTraits],
+  const hiddenTraitsWhenCollapsed = Math.max(
+    0,
+    radarTraits.length - MAX_VISIBLE_TRAITS,
   );
-  const hiddenTraitsCount = Math.max(0, radarTraits.length - displayedTraits.length);
+  const displayedTraits = useMemo(
+    () => {
+      const slice = radarExpanded
+        ? radarTraits
+        : radarTraits.slice(0, MAX_VISIBLE_TRAITS);
+      return slice.map((t, i) => ({
+        ...t,
+        uiCssVar: DISPLAY_TRAIT_VARS[i % DISPLAY_TRAIT_VARS.length],
+      }));
+    },
+    [radarTraits, radarExpanded],
+  );
 
   const axes = displayedTraits.length;
 
@@ -377,10 +398,24 @@ export default function IdentityRadar({
               ))}
             </Legend>
           ) : null}
-          {hasData && hiddenTraitsCount > 0 ? (
-            <HiddenTraitsNote>
-              +{hiddenTraitsCount} hidden {hiddenTraitsCount === 1 ? "trait" : "traits"}
-            </HiddenTraitsNote>
+          {hasData && hiddenTraitsWhenCollapsed > 0 && !radarExpanded ? (
+            <ExpandToggle
+              type="button"
+              onClick={() => setRadarExpanded(true)}
+              aria-expanded={radarExpanded}
+            >
+              +{hiddenTraitsWhenCollapsed} more{" "}
+              {hiddenTraitsWhenCollapsed === 1 ? "trait" : "traits"} — show all
+            </ExpandToggle>
+          ) : null}
+          {hasData && radarExpanded && hiddenTraitsWhenCollapsed > 0 ? (
+            <ExpandToggle
+              type="button"
+              onClick={() => setRadarExpanded(false)}
+              aria-expanded={radarExpanded}
+            >
+              Show fewer traits
+            </ExpandToggle>
           ) : null}
         </ChartWrap>
       </Card>

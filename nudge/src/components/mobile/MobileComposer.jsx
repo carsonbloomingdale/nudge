@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import JournalAttachmentPicker from "../journal/JournalAttachmentPicker";
 import { useAppShell } from "../../context/AppShellContext";
+import {
+  stashJournalDraftPendingConfirm,
+  takeJournalDraftForSessionRecovery,
+} from "../../model/journalPendingDraft";
 
 const PROMPTS = [
   "What felt meaningful, even if it was small?",
@@ -115,6 +119,7 @@ export default function MobileComposer() {
     closeComposer,
     submitJournalEntry,
     composerSubmitLabel,
+    consumeComposerDraftBootstrap,
   } = useAppShell();
   const [text, setText] = useState("");
   const [attachFiles, setAttachFiles] = useState([]);
@@ -123,11 +128,18 @@ export default function MobileComposer() {
   const textAreaRef = useRef(null);
 
   useEffect(() => {
-    if (composerOpen) {
-      setPromptIx(Math.floor(Math.random() * PROMPTS.length));
-      setAttachFiles([]);
+    if (!composerOpen) {
+      return;
     }
-  }, [composerOpen]);
+    setPromptIx(Math.floor(Math.random() * PROMPTS.length));
+    const boot = consumeComposerDraftBootstrap();
+    const recovered =
+      boot ?? takeJournalDraftForSessionRecovery();
+    if (recovered) {
+      setText(recovered);
+    }
+    setAttachFiles([]);
+  }, [composerOpen, consumeComposerDraftBootstrap]);
 
   useEffect(() => {
     if (!composerOpen) {
@@ -172,14 +184,24 @@ export default function MobileComposer() {
       return;
     }
     const filesToSubmit = [...attachFiles];
-    setText("");
-    setAttachFiles([]);
-    closeComposer();
     setSaving(true);
+    stashJournalDraftPendingConfirm(trimmed);
     try {
       const opts =
         filesToSubmit.length > 0 ? { files: filesToSubmit } : undefined;
-      await submitJournalEntry(trimmed, opts);
+      const ok = await submitJournalEntry(trimmed, opts);
+      if (!ok) {
+        throw new Error("Could not save right now. Your entry is still here.");
+      }
+      setText("");
+      setAttachFiles([]);
+      closeComposer();
+    } catch (e) {
+      const msg =
+        e && typeof e === "object" && "message" in e && typeof e.message === "string"
+          ? e.message
+          : "Couldn't save your entry. Your text is still here.";
+      window.alert(msg);
     } finally {
       setSaving(false);
     }

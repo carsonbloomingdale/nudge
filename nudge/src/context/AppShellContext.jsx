@@ -58,6 +58,8 @@ export function AppShellProvider({ children }) {
   });
 
   const journalSubmitRef = useRef(null);
+  /** One-shot full text when reopening the mobile composer after a failed journal submit. */
+  const composerDraftBootstrapRef = useRef(null);
 
   const registerJournalSubmit = useCallback((fn) => {
     journalSubmitRef.current = fn;
@@ -77,6 +79,18 @@ export function AppShellProvider({ children }) {
 
   const openComposer = useCallback(() => setComposerOpen(true), []);
 
+  const openComposerWithDraft = useCallback((text) => {
+    composerDraftBootstrapRef.current =
+      typeof text === "string" ? text : String(text ?? "");
+    setComposerOpen(true);
+  }, []);
+
+  const consumeComposerDraftBootstrap = useCallback(() => {
+    const t = composerDraftBootstrapRef.current;
+    composerDraftBootstrapRef.current = null;
+    return typeof t === "string" && t.length > 0 ? t : null;
+  }, []);
+
   const closeComposer = useCallback(() => setComposerOpen(false), []);
 
   const recordStreakOnSubmit = useCallback(() => {
@@ -93,6 +107,8 @@ export function AppShellProvider({ children }) {
     () => ({
       composerOpen,
       openComposer,
+      openComposerWithDraft,
+      consumeComposerDraftBootstrap,
       closeComposer,
       composerSubmitLabel,
       setComposerSubmitLabel,
@@ -105,6 +121,8 @@ export function AppShellProvider({ children }) {
     [
       composerOpen,
       openComposer,
+      openComposerWithDraft,
+      consumeComposerDraftBootstrap,
       closeComposer,
       composerSubmitLabel,
       streakCount,

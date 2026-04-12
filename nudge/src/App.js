@@ -12,6 +12,7 @@ import AppLayout from "./layouts/AppLayout";
 import AccountPage from "./pages/AccountPage";
 import NudgeHomePage from "./pages/NudgeHomePage";
 import SettingsPage from "./pages/SettingsPage";
+import JournalReminderPage from "./pages/JournalReminderPage";
 import IdentityMapPage from "./pages/IdentityMapPage";
 import TraitGrowthPage from "./pages/TraitGrowthPage";
 import GoalsPage from "./pages/GoalsPage";
@@ -23,6 +24,8 @@ import AdminInsufficientPage from "./pages/AdminInsufficientPage";
 import AdminRoute from "./components/AdminRoute";
 import SectionErrorBoundary from "./components/errors/SectionErrorBoundary";
 import { initUiAccentFromStorage } from "./theme/uiAccent";
+import { refreshJournalReminderSchedule } from "./mobile/journalReminder";
+import { setupNativePushNotifications } from "./mobile/pushNotifications";
 
 function RootRedirect() {
   const { isAuthenticated, isRestoring } = useAuth();
@@ -104,6 +107,10 @@ function AppRoutes() {
         />
         <Route path="account" element={withBoundary("Account", <AccountPage />)} />
         <Route path="settings" element={withBoundary("Settings", <SettingsPage />)} />
+        <Route
+          path="reminders"
+          element={withBoundary("Reminders", <JournalReminderPage />)}
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -113,6 +120,8 @@ function AppRoutes() {
 export default function App() {
   useEffect(() => {
     initUiAccentFromStorage();
+    void setupNativePushNotifications();
+    void refreshJournalReminderSchedule();
   }, []);
 
   return (
