@@ -27,6 +27,9 @@ nudge/.bun/
 node_modules/.bun/
 nudge/node_modules/.bun/
 
+# Local reliability cron (not part of the app; copy to ~/Desktop if desired)
+/desktop-reliability-agent/
+
 # Editor / OS
 .idea/
 
